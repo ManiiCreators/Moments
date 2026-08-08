@@ -1,0 +1,107 @@
+import React, { useState, useEffect } from "react";
+import { db } from "../firebase";
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity} from "react-native";
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot} from "firebase/firestore";
+import { doc, updateDoc, increment } from "firebase/firestore";
+
+export default function Comment({ route }) {
+  const { postId } = route.params;
+  const [comment, setComment] = useState("");
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const postComment = async () => {
+  if (comment.trim() === "") return;
+
+  try {
+    await addDoc(collection(db, "posts", postId, "comments"), {
+      text: comment,
+      createdAt: serverTimestamp(),
+    });
+     
+    await updateDoc(doc(db, "posts", postId), {
+    comments: increment(1),
+    });
+
+    setComment("");
+    //await loadComments();
+    alert("Comment posted!");
+  } catch (error) {
+    console.log(error);
+    alert(error.message);
+  }
+};
+const loadComments = () => {
+  const q = query(
+    collection(db, "posts", postId, "comments"),
+    orderBy("createdAt", "asc")
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    setComments(data);
+  });
+};
+
+useEffect(() => {
+  const unsubscribe = loadComments();
+
+  return () => unsubscribe();
+}, []);
+
+  return (
+    <SafeAreaView style={{ flex: 1, padding: 20 }}>
+      <Text style={{ fontSize: 24, fontWeight: "bold" }}>
+        Comments
+      </Text>
+
+      <TextInput
+        placeholder="Write a comment..."
+        value={comment}
+        onChangeText={setComment}
+        style={{
+          borderWidth: 1,
+          borderRadius: 10,
+          padding: 10,
+          marginTop: 20,
+        }}
+      />
+
+<TouchableOpacity
+  onPress={postComment}
+  style={{
+    backgroundColor: "#007AFF",
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 15,
+  }}
+>
+  <Text
+    style={{
+      color: "white",
+      textAlign: "center",
+      fontWeight: "bold",
+    }}
+  >
+    Post Comment
+  </Text>
+</TouchableOpacity>
+{comments.map((item) => (
+  <View
+    key={item.id}
+    style={{
+      padding: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: "#ddd",
+      marginTop: 10,
+    }}
+  >
+    <Text>{item.text}</Text>
+  </View>
+))}
+    </SafeAreaView>
+  );
+}
