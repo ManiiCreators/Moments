@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import { auth, db } from "../firebase";
-import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, } from "firebase/firestore";
 
 export default function UserProfile({ route, navigation }) {
   const { user } = route.params;
@@ -9,6 +9,32 @@ export default function UserProfile({ route, navigation }) {
   const [followersCount, setFollowersCount] = useState(
   user.followers?.length || 0
 );
+
+useEffect(() => {
+  const checkFollowingStatus = async () => {
+    try {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) return;
+
+      const userRef = doc(db, "users", user.id);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const latestUserData = userSnap.data();
+        const followers = latestUserData.followers || [];
+
+        setIsFollowing(followers.includes(currentUser.uid));
+        setFollowersCount(followers.length);
+      }
+    } catch (error) {
+      console.log("Error checking follow status:", error);
+    }
+  };
+
+  checkFollowingStatus();
+}, [user.id]);
+
   const followUser = async () => {
   try {
     const currentUser = auth.currentUser;
