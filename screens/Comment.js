@@ -42,6 +42,7 @@ if (
 
   await addDoc(collection(db, "Notification"), {
     userId: postData.userId,
+    postId: postId,
     message: commenterName + " commented on your Moment",
     type: "comment",
     commentText: comment,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, FlatList, Image} from "react-native";
 import { auth, db } from "../firebase";
 import {
@@ -15,8 +15,9 @@ import {
   arrayRemove
 } from "firebase/firestore";
 
-export default function Home({ navigation }) {
+export default function Home({ navigation, route }) {
 
+  const flatListRef = useRef(null);
   const [stories, setStories] = useState([]);
   const [reports, setReports] = useState([]);
   const [viewedStories, setViewedStories] = useState([]);
@@ -126,6 +127,28 @@ console.log("Stories:", data);
     console.log(error);
   }
 };
+
+useEffect(() => {
+  const postId = route?.params?.postId;
+
+  if (!postId || reports.length === 0) {
+    return;
+  }
+
+  const postIndex = reports.findIndex(
+    (post) => post.id === postId
+  );
+
+  if (postIndex !== -1) {
+    setTimeout(() => {
+      flatListRef.current?.scrollToIndex({
+        index: postIndex,
+        animated: true,
+      });
+    }, 500);
+  }
+}, [route?.params?.postId, reports]);
+
 const likePost = async (postId) => {
   try {
     const currentUser = auth.currentUser;
@@ -177,6 +200,7 @@ console.log("Liker name:", likerName);
 
 await addDoc(collection(db, "Notification"), {
     userId: post.userId,
+    postId: postId,
     message: likerName + " liked your Moment",
     type: "like",
     isRead: false,
@@ -245,6 +269,7 @@ return (
   <Text style={styles.buttonText}>🔔 Notifications</Text>
 </TouchableOpacity>
   <FlatList
+  ref={flatListRef}
   data={reports}
   ListHeaderComponent={
     <FlatList

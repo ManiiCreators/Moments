@@ -18,8 +18,9 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../firebase";
 
-export default function Notifications() {
-  const [notifications, setNotifications] = useState([]);
+export default function Notifications({ navigation }) {
+    
+const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -65,12 +66,28 @@ export default function Notifications() {
 
     return (
       <TouchableOpacity
-        style={[
-          styles.notification,
-          item.isRead === false && styles.unread,
-        ]}
-        activeOpacity={0.7}
-      >
+  style={[
+    styles.notification,
+    item.isRead === false && styles.unread,
+  ]}
+  activeOpacity={0.7}
+  onPress={() => {
+    if (!item.postId) {
+      alert("This is an older notification.");
+      return;
+    }
+
+    if (item.type === "comment") {
+      navigation.navigate("Comment", {
+        postId: item.postId,
+      });
+    } else if (item.type === "like") {
+      navigation.navigate("Home", {
+        postId: item.postId,
+      });
+    }
+     }}
+     >
         {/* Icon */}
         <View style={styles.iconContainer}>
           <Text style={styles.icon}>
