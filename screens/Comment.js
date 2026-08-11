@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import { SafeAreaView, View, Text, TextInput, TouchableOpacity} from "react-native";
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot} from "firebase/firestore";
-import { doc, updateDoc, increment } from "firebase/firestore";
+import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
 
 export default function Comment({ route }) {
   const { postId } = route.params;
@@ -18,6 +18,38 @@ export default function Comment({ route }) {
       createdAt: serverTimestamp(),
     });
      
+   const postSnapshot = await getDoc(
+  doc(db, "posts", postId)
+);
+
+const postData = postSnapshot.data();
+const currentUser = auth.currentUser;
+
+if (
+  postData &&
+  currentUser &&
+  postData.userId !== currentUser.uid
+) {
+  const userSnapshot = await getDoc(
+    doc(db, "users", currentUser.uid)
+  );
+
+  const userData = userSnapshot.exists()
+    ? userSnapshot.data()
+    : {};
+
+  const commenterName = userData.name || "Someone";
+
+  await addDoc(collection(db, "Notification"), {
+    userId: postData.userId,
+    message: commenterName + " commented on your Moment",
+    type: "comment",
+    commentText: comment,
+    isRead: false,
+    createdAt: serverTimestamp(),
+  });
+}
+
     await updateDoc(doc(db, "posts", postId), {
     comments: increment(1),
     });

@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, FlatList, Image} from "react-native";
-import { db } from "../firebase";
-import { collection, getDocs, doc, updateDoc, increment, deleteDoc, Timestamp,} from "firebase/firestore";
+import { auth, db } from "../firebase";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  getDoc,
+  doc,
+  updateDoc,
+  increment,
+  deleteDoc,
+  Timestamp,
+  arrayUnion,
+  arrayRemove
+} from "firebase/firestore";
+
 export default function Home({ navigation }) {
 
   const [stories, setStories] = useState([]);
@@ -17,15 +30,40 @@ const loadReports = async () => {
   try {
     const querySnapshot = await getDocs(collection(db, "posts"));
 
-    const data = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const data = await Promise.all(
+      querySnapshot.docs.map(async (postDoc) => {
+        const postData = postDoc.data();
 
-    console.log(data);
+        let userName = "Unknown User";
+        let userPhoto = null;
+
+        if (postData.userId) {
+          const userSnapshot = await getDoc(
+            doc(db, "users", postData.userId)
+          );
+
+          if (userSnapshot.exists()) {
+            const userData = userSnapshot.data();
+
+            userName = userData.name || "Unknown User";
+            userPhoto = userData.photoURL || null;
+          }
+        }
+
+        return {
+          id: postDoc.id,
+          ...postData,
+          userName,
+          userPhoto,
+        };
+      })
+    );
+
+    console.log("POSTS WITH USER INFO:", data);
+
     setReports(data);
   } catch (error) {
-    console.log(error);
+    console.log("LOAD POSTS ERROR:", error);
   }
 };
 const loadStories = async () => {
@@ -90,11 +128,63 @@ console.log("Stories:", data);
 };
 const likePost = async (postId) => {
   try {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      alert("Please login first!");
+      return;
+    }
+
     const postRef = doc(db, "posts", postId);
 
-    await updateDoc(postRef, {
-      likes: increment(1),
-    });
+    const post = reports.find((item) => item.id === postId);
+
+    if (!post) return;
+
+    const likedBy = post.likedBy || [];
+
+    const alreadyLiked = likedBy.includes(currentUser.uid);
+
+    if (alreadyLiked) {
+      // Unlike
+      await updateDoc(postRef, {
+        likes: increment(-1),
+        likedBy: arrayRemove(currentUser.uid),
+      });
+    } else {
+  // Like
+  await updateDoc(postRef, {
+    likes: increment(1),
+    likedBy: arrayUnion(currentUser.uid),
+  });
+
+  // Create notification for the post owner
+  if (post.userId !== currentUser.uid) {
+  const userSnapshot = await getDoc(
+    doc(db, "users", currentUser.uid)
+  );
+
+  const userData = userSnapshot.exists()
+    ? userSnapshot.data()
+    : {};
+
+  const likerName = userData.name || "Someone";
+
+console.log("CREATING LIKE NOTIFICATION");
+console.log("Post owner:", post.userId);
+console.log("Current user:", currentUser.uid);
+console.log("Liker name:", likerName);
+
+await addDoc(collection(db, "Notification"), {
+    userId: post.userId,
+    message: likerName + " liked your Moment",
+    type: "like",
+    isRead: false,
+    createdAt: Timestamp.now(),
+  });
+  console.log("LIKE NOTIFICATION CREATED");
+}
+}
 
     loadReports();
 
@@ -147,6 +237,12 @@ return (
   onPress={() => navigation.navigate("Messages")}
 >
   <Text style={styles.buttonText}>💬 Messages</Text>
+</TouchableOpacity>
+<TouchableOpacity
+  style={styles.button}
+  onPress={() => navigation.navigate("Notifications")}
+>
+  <Text style={styles.buttonText}>🔔 Notifications</Text>
 </TouchableOpacity>
   <FlatList
   data={reports}
@@ -237,12 +333,29 @@ return (
     justifyContent: "space-between",
     marginTop: 10,
   }}
- >
+  >
   <TouchableOpacity
   onPress={() => likePost(item.id)}
- >
-    <Text>❤️ {item.likes || 0}</Text>
-  </TouchableOpacity>
+  style={{
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    backgroundColor: item.likedBy?.includes(auth.currentUser?.uid)
+      ? "#ffdddd"
+      : "#eeeeee",
+  }}
+>
+  <Text
+  style={{
+    fontSize: 16,
+    fontWeight: "bold",
+  }}
+>
+  {item.likedBy?.includes(auth.currentUser?.uid)
+    ? "💔 Unlike " + (item.likes || 0)
+    : "❤️ Like " + (item.likes || 0)}
+</Text>
+</TouchableOpacity> 
 
   <TouchableOpacity
     onPress={() => navigation.navigate("Comment", { postId: item.id })}
@@ -281,14 +394,16 @@ return (
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
+  flex: 1,
+  backgroundColor: "#fff",
+  paddingTop: 30,
+},
   title: {
-    fontSize: 30,
-    fontWeight: "bold",
-    marginBottom: 40,
-  },
+  fontSize: 30,
+  fontWeight: "bold",
+  marginBottom: 40,
+  textAlign: "center",
+},
   button: {
     backgroundColor: "#007AFF",
     padding: 15,

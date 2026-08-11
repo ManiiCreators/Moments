@@ -18,6 +18,7 @@ import StoryReply from "./screens/StoryReply";
 import StoryReplies from "./screens/StoryReplies";
 import Messages from "./screens/Messages";
 import Chat from "./screens/Chat";
+import Notifications from "./screens/Notifications";
 
 
 const Stack = createNativeStackNavigator();
@@ -56,6 +57,7 @@ if (loading) {
       <Stack.Screen name="RepliesTest" component={StoryReplies}/>
       <Stack.Screen name="Messages" component={Messages}/>
       <Stack.Screen name="Chat" component={Chat}/>
+      <Stack.Screen name="Notifications" component={Notifications}/>
     </>
   ) : (
     <>
