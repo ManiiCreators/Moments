@@ -19,6 +19,8 @@ import StoryReplies from "./screens/StoryReplies";
 import Messages from "./screens/Messages";
 import Chat from "./screens/Chat";
 import Notifications from "./screens/Notifications";
+import Followers from "./screens/Followers";
+import Following from "./screens/Following";
 
 
 const Stack = createNativeStackNavigator();
@@ -50,6 +52,8 @@ if (loading) {
       <Stack.Screen name="Comment" component={Comment} />
       <Stack.Screen name="Search" component={Search} />
       <Stack.Screen name="UserProfile" component={UserProfile}/>
+      <Stack.Screen name="Followers" component={Followers} />
+      <Stack.Screen name="Following" component={Following} />
       <Stack.Screen name="Stories" component={Stories} />
       <Stack.Screen name="CreateStory" component={CreateStory}/>
       <Stack.Screen name="StoryViews" component={StoryViews}/>

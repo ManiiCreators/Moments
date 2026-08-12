@@ -116,13 +116,32 @@ else {
       >
         {user.bio || "No bio yet"}
       </Text>
-      <Text style={{ fontSize: 16, marginTop: 10 }}>
-     Followers: {followersCount}
-      </Text>
 
-    <Text style={{ fontSize: 16 }}>
+      <TouchableOpacity
+     onPress={() =>
+     navigation.navigate("Followers", {
+      user: user,
+     })
+    }
+     style={{ marginTop: 10 }}
+    >
+  <Text style={{ fontSize: 16 }}>
+    Followers: {followersCount}
+  </Text>
+</TouchableOpacity>
+
+  <TouchableOpacity
+  onPress={() =>
+    navigation.navigate("Following", {
+      user: user,
+    })
+  }
+  style={{ marginTop: 10 }}
+  >
+  <Text style={{ fontSize: 16 }}>
     Following: {user.following?.length || 0}
-    </Text>
+  </Text>
+  </TouchableOpacity>
    <TouchableOpacity
   onPress={followUser}
   style={{
