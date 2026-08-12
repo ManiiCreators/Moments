@@ -6,7 +6,14 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import { addDoc, collection, Timestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  Timestamp,
+  doc,
+  getDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 export default function StoryReply({ route, navigation }) {
@@ -31,6 +38,29 @@ Alert.alert("Story UID", String(story.uid));
       message: message,
       createdAt: Timestamp.now(),
     });
+
+// Create notification for Story owner
+if (story.uid !== auth.currentUser.uid) {
+  const userSnapshot = await getDoc(
+    doc(db, "users", auth.currentUser.uid)
+  );
+
+  const userData = userSnapshot.exists()
+    ? userSnapshot.data()
+    : {};
+
+  const senderName = userData.name || "Someone";
+
+  await addDoc(collection(db, "Notification"), {
+    userId: story.uid,
+    message: senderName + " replied to your Story",
+    type: "storyReply",
+    storyId: story.id,
+    replyText: message,
+    isRead: false,
+    createdAt: serverTimestamp(),
+  });
+}
 
     Alert.alert("Success", "Reply sent!");
     navigation.goBack();

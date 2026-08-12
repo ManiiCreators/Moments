@@ -13,6 +13,8 @@ import {
   where,
   orderBy,
   onSnapshot,
+  doc,
+  updateDoc,
 } from "firebase/firestore";
 
 import { onAuthStateChanged } from "firebase/auth";
@@ -61,8 +63,9 @@ const [notifications, setNotifications] = useState([]);
   }, []);
 
   const renderNotification = ({ item }) => {
-    const isComment = item.type === "comment";
-    const isLike = item.type === "like";
+  const isComment = item.type === "comment";
+  const isLike = item.type === "like";
+  const isStoryReply = item.type === "storyReply";
 
     return (
       <TouchableOpacity
@@ -71,13 +74,28 @@ const [notifications, setNotifications] = useState([]);
     item.isRead === false && styles.unread,
   ]}
   activeOpacity={0.7}
-  onPress={() => {
-    if (!item.postId) {
-      alert("This is an older notification.");
-      return;
+  onPress={async () => {
+  try {
+    if (!item.isRead) {
+      await updateDoc(
+        doc(db, "Notification", item.id),
+        {
+          isRead: true,
+        }
+      );
     }
 
-    if (item.type === "comment") {
+    if (item.type === "storyReply") {
+  navigation.navigate("RepliesTest");
+  return;
+}
+
+if (!item.postId) {
+  alert("This is an older notification.");
+  return;
+}
+
+if (item.type === "comment") {
       navigation.navigate("Comment", {
         postId: item.postId,
       });
@@ -86,12 +104,15 @@ const [notifications, setNotifications] = useState([]);
         postId: item.postId,
       });
     }
-     }}
+  } catch (error) {
+    console.log("Notification update error:", error);
+  }
+}}
      >
         {/* Icon */}
         <View style={styles.iconContainer}>
           <Text style={styles.icon}>
-            {isComment ? "💬" : isLike ? "❤️" : "🔔"}
+            {isComment ? "💬" : isLike ? "❤️" : isStoryReply ? "💬" : "🔔"}
           </Text>
         </View>
 
@@ -105,6 +126,12 @@ const [notifications, setNotifications] = useState([]);
             <Text style={styles.comment}>
               "{item.commentText}"
             </Text>
+          ) : null}
+
+          {isStoryReply && item.replyText ? (
+          <Text style={styles.comment}>
+          "{item.replyText}"
+          </Text>
           ) : null}
 
           {isLike ? (
