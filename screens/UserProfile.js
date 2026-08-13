@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import { auth, db } from "../firebase";
-import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, } from "firebase/firestore";
+import {
+  doc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+  getDoc,
+  collection,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 export default function UserProfile({ route, navigation }) {
   const { user } = route.params;
@@ -15,7 +24,13 @@ useEffect(() => {
     try {
       const currentUser = auth.currentUser;
 
-      if (!currentUser) return;
+     if (!currentUser) return;
+
+      // Don't allow a user to follow themselves
+      if (currentUser.uid === user.id) {
+      setIsFollowing(false);
+      return;
+     }
 
       const userRef = doc(db, "users", user.id);
       const userSnap = await getDoc(userRef);
@@ -41,6 +56,12 @@ useEffect(() => {
 
    if (!currentUser) return;
 
+  // Don't allow self-follow
+  if (currentUser.uid === user.id) {
+  alert("You cannot follow yourself.");
+  return;
+   }
+
    if (isFollowing) {
   // Unfollow
   await updateDoc(doc(db, "users", user.id), {
@@ -64,6 +85,28 @@ else {
   await updateDoc(doc(db, "users", currentUser.uid), {
     following: arrayUnion(user.id),
   });
+
+  // Get follower's profile from Firestore
+const followerRef = doc(db, "users", currentUser.uid);
+const followerSnap = await getDoc(followerRef);
+
+const followerData = followerSnap.exists()
+  ? followerSnap.data()
+  : {};
+
+const followerName = followerData.name || "Someone";
+
+// Create follow notification
+await addDoc(collection(db, "Notification"), {
+  userId: user.id,
+  senderId: currentUser.uid,
+  senderName: followerName,
+  senderPhotoURL: followerData.photoURL || "",
+  type: "follow",
+  message: followerName + " started following you",
+  isRead: false,
+  createdAt: serverTimestamp(),
+});
 
   setIsFollowing(true);
   setFollowersCount((prev) => prev + 1);
@@ -142,28 +185,30 @@ else {
     Following: {user.following?.length || 0}
   </Text>
   </TouchableOpacity>
-   <TouchableOpacity
-  onPress={followUser}
-  style={{
-    backgroundColor: isFollowing ? "#888" : "#007AFF",
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 20,
-  }}
->
-  <Text
+  {auth.currentUser?.uid !== user.id && (
+  <TouchableOpacity
+    onPress={followUser}
     style={{
-      color: "white",
-      textAlign: "center",
-      fontWeight: "bold",
-      fontSize: 18,
+      backgroundColor: isFollowing ? "#888" : "#007AFF",
+      padding: 15,
+      borderRadius: 10,
+      marginTop: 20,
     }}
   >
-    {isFollowing ? "Following" : "Follow"}
-  </Text>
-</TouchableOpacity>
-<TouchableOpacity
-  onPress={() =>
+    <Text
+      style={{
+        color: "white",
+        textAlign: "center",
+        fontWeight: "bold",
+        fontSize: 18,
+      }}
+    >
+      {isFollowing ? "Following" : "Follow"}
+    </Text>
+   </TouchableOpacity>
+   )}
+   <TouchableOpacity
+   onPress={() =>
     navigation.navigate("Chat", {
       user: user,
     })

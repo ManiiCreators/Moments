@@ -5,6 +5,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  Image,
 } from "react-native";
 
 import {
@@ -15,6 +16,7 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  getDoc,
 } from "firebase/firestore";
 
 import { onAuthStateChanged } from "firebase/auth";
@@ -44,12 +46,12 @@ const [notifications, setNotifications] = useState([]);
         (snapshot) => {
           console.log("Notifications found:", snapshot.size);
 
-          const data = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
+       const data = snapshot.docs.map((notificationDoc) => ({
+     id: notificationDoc.id,
+      ...notificationDoc.data(),
+     }));
 
-          setNotifications(data);
+     setNotifications(data);
         },
         (error) => {
           console.log("Notification error:", error);
@@ -66,6 +68,8 @@ const [notifications, setNotifications] = useState([]);
   const isComment = item.type === "comment";
   const isLike = item.type === "like";
   const isStoryReply = item.type === "storyReply";
+  const isFollow = item.type === "follow";
+  console.log("FOLLOW PHOTO URL:", item.senderPhotoURL);
 
     return (
       <TouchableOpacity
@@ -90,12 +94,34 @@ const [notifications, setNotifications] = useState([]);
   return;
 }
 
-if (!item.postId) {
-  alert("This is an older notification.");
-  return;
-}
+  if (item.type === "follow") {
+  try {
+    const senderRef = doc(db, "users", item.senderId);
+    const senderSnap = await getDoc(senderRef);
 
-if (item.type === "comment") {
+    if (senderSnap.exists()) {
+      navigation.navigate("UserProfile", {
+        user: {
+          id: senderSnap.id,
+          ...senderSnap.data(),
+        },
+      });
+    } else {
+      alert("User profile not found.");
+    }
+  } catch (error) {
+    console.log("Error opening follower profile:", error);
+  }
+
+  return;
+  }
+
+   if (!item.postId) {
+   alert("This is an older notification.");
+   return;
+   }
+   if (item.type === "comment")
+     {
       navigation.navigate("Comment", {
         postId: item.postId,
       });
@@ -104,17 +130,32 @@ if (item.type === "comment") {
         postId: item.postId,
       });
     }
-  } catch (error) {
+    } catch (error) {
     console.log("Notification update error:", error);
-  }
-}}
+    }
+    }}
      >
         {/* Icon */}
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>
-            {isComment ? "💬" : isLike ? "❤️" : isStoryReply ? "💬" : "🔔"}
-          </Text>
-        </View>
+    <View style={styles.iconContainer}>
+    {isFollow && item.senderPhotoURL ? (
+    <Image
+      source={{ uri: item.senderPhotoURL }}
+      style={styles.profileImage}
+    />
+    ) : (
+    <Text style={styles.icon}>
+      {isComment
+        ? "💬"
+        : isLike
+        ? "❤️"
+        : isStoryReply
+        ? "💬"
+        : isFollow
+        ? "👤"
+        : "🔔"}
+    </Text>
+     )}
+     </View>
 
         {/* Content */}
         <View style={styles.content}>
@@ -212,6 +253,12 @@ const styles = StyleSheet.create({
   icon: {
     fontSize: 24,
   },
+
+ profileImage: {
+  width: 50,
+  height: 50,
+  borderRadius: 25,
+ },
 
   content: {
     flex: 1,
