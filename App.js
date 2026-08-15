@@ -4,12 +4,15 @@ import Comment from "./screens/Comment";
 import Login from "./screens/Login";
 import Signup from "./screens/signup";
 import Home from "./screens/Home";
+import MomentHome from "./screens/MomentHome";
 import CreatePost from "./screens/CreatePost";
+import CreateImpact from "./screens/CreateImpact";
 import Profile from "./screens/Profile";
 import React, { useEffect, useState } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import Search from "./screens/Search";
+import CommunityHome from "./screens/CommunityHome";
 import UserProfile from "./screens/UserProfile";
 import Stories from "./screens/Stories";
 import CreateStory from "./screens/CreateStory";
@@ -19,8 +22,10 @@ import StoryReplies from "./screens/StoryReplies";
 import Messages from "./screens/Messages";
 import Chat from "./screens/Chat";
 import Notifications from "./screens/Notifications";
+import SavedMoments from "./screens/SavedMoments";
 import Followers from "./screens/Followers";
 import Following from "./screens/Following";
+import MainTabs from "./navigation/MainTabs";
 
 
 const Stack = createNativeStackNavigator();
@@ -45,13 +50,14 @@ if (loading) {
     <NavigationContainer>
 <Stack.Navigator screenOptions={{ headerShown: false }}>
   {user ? (
-    <>
-      <Stack.Screen name="Home" component={Home} />
+  <>
+      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="CreateImpact" component={CreateImpact} />
       <Stack.Screen name="CreatePost" component={CreatePost} />
-      <Stack.Screen name="Profile" component={Profile} />
+      <Stack.Screen name="SavedMoments" component={SavedMoments} />
       <Stack.Screen name="Comment" component={Comment} />
       <Stack.Screen name="Search" component={Search} />
-      <Stack.Screen name="UserProfile" component={UserProfile}/>
+     <Stack.Screen name="UserProfile" component={UserProfile}/>
       <Stack.Screen name="Followers" component={Followers} />
       <Stack.Screen name="Following" component={Following} />
       <Stack.Screen name="Stories" component={Stories} />

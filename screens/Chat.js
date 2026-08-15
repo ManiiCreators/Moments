@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { AppState } from "react-native";
-import { View, Text, TextInput, TouchableOpacity, FlatList, Image,} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, FlatList, Image, KeyboardAvoidingView, Platform,} from "react-native";
 import { auth, db } from "../firebase";
-import { collection, addDoc, setDoc, query, orderBy, onSnapshot, Timestamp, doc, getDoc, deleteDoc} from "firebase/firestore";
+import { collection, addDoc, setDoc, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc} from "firebase/firestore";
 
 export default function Chat({ route, navigation }) {
   const { user, userId } = route.params || {};
@@ -88,8 +88,6 @@ const unsubscribe = onSnapshot(q, (snapshot) => {
   ...doc.data(),
 }));
 
-console.log("MESSAGES:", messageList);
-
 // Mark received messages as delivered
 messageList.forEach(async (item) => {
   if (
@@ -168,17 +166,10 @@ const handleDeleteMessage = async (messageId) => {
 };
 
 const handleSend = async () => {
-  console.log("MESSAGE:", message);
-  console.log("CHAT ID:", chatId);
-  console.log("USER ID:", userId);
 
   if (!message.trim()) return;
 
   const text = message.trim();
-
-  console.log("CHAT ID:", chatId);
-  console.log("MY UID:", auth.currentUser?.uid);
-  console.log("USER ID:", user?.id);
 
   setMessage("");
 
@@ -213,7 +204,10 @@ const handleSend = async () => {
   }
   };
   return (
-  <View style={{ flex: 1 }}>
+  <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+  >
 
     {/* Header */}
     <View
@@ -384,13 +378,16 @@ const handleSend = async () => {
 
     {/* Message input */}
     <View
-      style={{
-        flexDirection: "row",
-        padding: 10,
-        borderTopWidth: 1,
-        borderTopColor: "#ddd",
-      }}
-    >
+  style={{
+    flexDirection: "row",
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 18,
+    borderTopWidth: 1,
+    borderTopColor: "#ddd",
+    backgroundColor: "#fff",
+  }}
+>
       <TextInput
         value={message}
         onChangeText={handleTyping}
@@ -420,6 +417,6 @@ const handleSend = async () => {
       </TouchableOpacity>
     </View>
 
-  </View>
+  </KeyboardAvoidingView>
 );
 }

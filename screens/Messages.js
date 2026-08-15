@@ -53,9 +53,6 @@ useEffect(() => {
   (id) => id !== auth.currentUser.uid
 );
 
-console.log("CHAT PARTICIPANTS:", item.participants);
-console.log("OTHER USER ID:", otherUserId);
-
 const chatUser = {
   uid: otherUserId,
   name: item.userName || "Unknown User",

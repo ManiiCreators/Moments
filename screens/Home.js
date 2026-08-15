@@ -1,449 +1,293 @@
-import React, { useState, useEffect, useRef } from "react";
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, FlatList, Image} from "react-native";
-import { auth, db } from "../firebase";
+import React from "react";
 import {
-  collection,
-  addDoc,
-  getDocs,
-  getDoc,
-  doc,
-  updateDoc,
-  increment,
-  deleteDoc,
-  Timestamp,
-  arrayUnion,
-  arrayRemove
-} from "firebase/firestore";
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
 
-export default function Home({ navigation, route }) {
+export default function Home({ navigation }) {
+  return (
+    <SafeAreaView style={styles.container}>
+    <ScrollView showsVerticalScrollIndicator={false}>
 
-  const flatListRef = useRef(null);
-  const [stories, setStories] = useState([]);
-  const [reports, setReports] = useState([]);
-  const [viewedStories, setViewedStories] = useState([]);
 
-useEffect(() => {
-  loadReports();
-  loadStories();
-}, []);
+      <View style={styles.header}>
+        <Text style={styles.title}>Moments</Text>
+      </View>
 
-const loadReports = async () => {
-  try {
-    const querySnapshot = await getDocs(collection(db, "posts"));
+      <View style={styles.content}>
 
-    const data = await Promise.all(
-      querySnapshot.docs.map(async (postDoc) => {
-        const postData = postDoc.data();
+        {/* Impact Hero */}
+        <View style={styles.impactHero}>
 
-        let userName = "Unknown User";
-        let userPhoto = null;
+          <Text style={styles.impactEmoji}>🌱</Text>
 
-        if (postData.userId) {
-          const userSnapshot = await getDoc(
-            doc(db, "users", postData.userId)
-          );
-
-          if (userSnapshot.exists()) {
-            const userData = userSnapshot.data();
-
-            userName = userData.name || "Unknown User";
-            userPhoto = userData.photoURL || null;
-          }
-        }
-
-        return {
-          id: postDoc.id,
-          ...postData,
-          userName,
-          userPhoto,
-        };
-      })
-    );
-
-    console.log("POSTS WITH USER INFO:", data);
-
-    setReports(data);
-  } catch (error) {
-    console.log("LOAD POSTS ERROR:", error);
-  }
-};
-const loadStories = async () => {
-  try {
-
-const querySnapshot = await getDocs(collection(db, "stories"));
-
-const now = Timestamp.now();
-
-const data = querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  }))
- .filter((story) => {
-  if (!story.createdAt) {
-    return false;
-  }
-
-  const hours =
-    (now.seconds - story.createdAt.seconds) / 3600;
-
-  return hours < 24;
-});
-console.log(data);
-const groupedStories = [];
-
-data.forEach((story) => {
- const existingUser = groupedStories.find(
-  (item) => item.uid === story.uid
-);
-
-  if (!existingUser) {
-    groupedStories.push({
-      ...story,
-      stories: [story],
-    });
-  } else {
-    existingUser.stories.push(story);
-  }
-});
-setStories(groupedStories);
-
-console.log("Before grouping:", data.length);
-console.log("After grouping:", groupedStories.length);
-
-groupedStories.forEach((user) => {
-  console.log(
-    user.name,
-    "has",
-    user.stories.length,
-    "stories"
-  );
-});
-
-setStories(groupedStories);
-console.log("Grouped Stories:", JSON.stringify(groupedStories, null, 2));
-console.log("Stories:", data);
-
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-useEffect(() => {
-  const postId = route?.params?.postId;
-
-  if (!postId || reports.length === 0) {
-    return;
-  }
-
-  const postIndex = reports.findIndex(
-    (post) => post.id === postId
-  );
-
-  if (postIndex !== -1) {
-    setTimeout(() => {
-      flatListRef.current?.scrollToIndex({
-        index: postIndex,
-        animated: true,
-      });
-    }, 500);
-  }
-}, [route?.params?.postId, reports]);
-
-const likePost = async (postId) => {
-  try {
-    const currentUser = auth.currentUser;
-
-    if (!currentUser) {
-      alert("Please login first!");
-      return;
-    }
-
-    const postRef = doc(db, "posts", postId);
-
-    const post = reports.find((item) => item.id === postId);
-
-    if (!post) return;
-
-    const likedBy = post.likedBy || [];
-
-    const alreadyLiked = likedBy.includes(currentUser.uid);
-
-    if (alreadyLiked) {
-      // Unlike
-      await updateDoc(postRef, {
-        likes: increment(-1),
-        likedBy: arrayRemove(currentUser.uid),
-      });
-    } else {
-  // Like
-  await updateDoc(postRef, {
-    likes: increment(1),
-    likedBy: arrayUnion(currentUser.uid),
-  });
-
-  // Create notification for the post owner
-  if (post.userId !== currentUser.uid) {
-  const userSnapshot = await getDoc(
-    doc(db, "users", currentUser.uid)
-  );
-
-  const userData = userSnapshot.exists()
-    ? userSnapshot.data()
-    : {};
-
-  const likerName = userData.name || "Someone";
-
-console.log("CREATING LIKE NOTIFICATION");
-console.log("Post owner:", post.userId);
-console.log("Current user:", currentUser.uid);
-console.log("Liker name:", likerName);
-
-await addDoc(collection(db, "Notification"), {
-    userId: post.userId,
-    postId: postId,
-    message: likerName + " liked your Moment",
-    type: "like",
-    isRead: false,
-    createdAt: Timestamp.now(),
-  });
-  console.log("LIKE NOTIFICATION CREATED");
-}
-}
-
-    loadReports();
-
-  } catch (error) {
-    console.log(error);
-  }
-};
-const deletePost = async (postId) => {
-  try {
-    await deleteDoc(doc(db, "posts", postId));
-    loadReports();
-    alert("Post deleted!");
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-return (
-  <SafeAreaView style={styles.container}>
-    <Text style={styles.title}>Moments Feed</Text>
-
-    <TouchableOpacity
-      style={styles.button}
-      onPress={() => navigation.navigate("CreatePost")}
-    >
-      <Text style={styles.buttonText}>Create Post</Text>
-    </TouchableOpacity>
-
-    <TouchableOpacity
-  style={styles.button}
-  onPress={() => navigation.navigate("CreateStory")}
-  >
-  <Text style={styles.buttonText}>Create Story</Text>
-  </TouchableOpacity>
-
-    <TouchableOpacity
-      style={styles.button}
-      onPress={() => navigation.navigate("Profile")}
-    >
-      <Text style={styles.buttonText}>Profile</Text>
-    </TouchableOpacity>
-    <TouchableOpacity
-  style={styles.button}
-  onPress={() => navigation.navigate("Search")}
-   >
-  <Text style={styles.buttonText}>Search Users</Text>
-</TouchableOpacity>
-<TouchableOpacity
-  style={styles.button}
-  onPress={() => navigation.navigate("Messages")}
->
-  <Text style={styles.buttonText}>💬 Messages</Text>
-</TouchableOpacity>
-<TouchableOpacity
-  style={styles.button}
-  onPress={() => navigation.navigate("Notifications")}
->
-  <Text style={styles.buttonText}>🔔 Notifications</Text>
-</TouchableOpacity>
-  <FlatList
-  ref={flatListRef}
-  data={reports}
-  ListHeaderComponent={
-    <FlatList
-      data={stories}
-      horizontal
-      scrollEnabled={true}
-      showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={{ paddingVertical: 10 }}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          onPress={() => {
-         setViewedStories((prev) => [...prev, item.id]);
-         navigation.navigate("Stories", { story: item });
-        }}
-          style={{ alignItems: "center", marginRight: 15 }}
-        >
-      <Image
-     source={
-     item.photoURL
-      ? { uri: item.photoURL }
-      : require("../assets/icon.png")
-    }
-     style={{
-     width: 70,
-     height: 70,
-     borderRadius: 35,
-     borderWidth: 3,
-     borderColor: viewedStories.includes(item.id)
-      ? "#999"
-      : "#ff0066",
-     }}
-     />
-
-          <Text style={{ marginTop: 5 }}>
-            {item.name || "Unknown"}
+          <Text style={styles.impactTitle}>
+            What impact will you create today?
           </Text>
-        </TouchableOpacity>
-      )}
-    />
-  }
-  keyExtractor={(item) => item.id}
-  contentContainerStyle={{
-  padding: 15,
-}}
-  renderItem={({ item }) => (
-    <View style={{ padding: 15, marginBottom: 15, borderWidth: 1, borderRadius: 10 }}>
-<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-  <Image
-    source={
-      item.userPhoto
-        ? { uri: item.userPhoto }
-        : require("../assets/icon.png")
-    }
-    style={{
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      marginRight: 10,
-    }}
-  />
 
-  <Text style={{ fontWeight: "bold", fontSize: 18 }}>
-    {item.userName || "Unknown User"}
-  </Text>
-</View>    
- <Text>{item.caption}</Text>
+          <Text style={styles.impactSubtitle}>
+            Every good action matters. ❤️
+          </Text>
 
-      {item.imageUrl ? (
-   <Image
-  source={{ uri: item.imageUrl }}
-  style={{
-    width: 300,
-    height: 200,
-    borderRadius: 10,
-    marginTop: 10,
-    alignSelf: "center",
-  }}
-  resizeMode="contain"
-  />
-) : null}
+          <TouchableOpacity
+            style={styles.impactButton}
+            onPress={() => navigation.navigate("CreateImpact")}
+          >
+            <Text style={styles.impactButtonText}>
+              ＋ Create Impact
+            </Text>
+          </TouchableOpacity>
 
-<View
-  style={{
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  }}
-  >
-  <TouchableOpacity
-  onPress={() => likePost(item.id)}
-  style={{
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    backgroundColor: item.likedBy?.includes(auth.currentUser?.uid)
-      ? "#ffdddd"
-      : "#eeeeee",
-  }}
->
-  <Text
-  style={{
-    fontSize: 16,
-    fontWeight: "bold",
-  }}
->
-  {item.likedBy?.includes(auth.currentUser?.uid)
-    ? "💔 Unlike " + (item.likes || 0)
-    : "❤️ Like " + (item.likes || 0)}
-</Text>
-</TouchableOpacity> 
+        </View>
 
-  <TouchableOpacity
-    onPress={() => navigation.navigate("Comment", { postId: item.id })}
-  >
-  <Text style={{ fontSize: 24 }}>
-    💬 {item.comments}
-  </Text>
-</TouchableOpacity>
-</View>
-<TouchableOpacity
-  onPress={() => deletePost(item.id)}
-  style={{
-    backgroundColor: "red",
-    padding: 10,
-    borderRadius: 10,
-    marginTop: 10,
-  }}
->
-  <Text
-    style={{
-      color: "white",
-      textAlign: "center",
-      fontWeight: "bold",
-    }}
-  >
-    🗑️ Delete Post
-  </Text>
-</TouchableOpacity>
- </View>
-  )}
-/>
+        {/* Moments */}
+        <View style={styles.featureCard}>
 
-  </SafeAreaView>
-);
+          <View style={styles.featureIcon}>
+            <Text style={styles.featureEmoji}>📸</Text>
+          </View>
+
+          <View style={styles.featureText}>
+
+            <Text style={styles.featureTitle}>
+              Moments
+            </Text>
+
+            <Text style={styles.featureSubtitle}>
+              Share your life, discover new moments,
+              and connect with people around you.
+            </Text>
+
+          </View>
+
+          <TouchableOpacity
+            style={styles.featureButton}
+            onPress={() => navigation.navigate("Moments")}
+          >
+            <Text style={styles.featureButtonText}>
+              Explore →
+            </Text>
+          </TouchableOpacity>
+
+        </View>
+        {/* Community */}
+        <View style={styles.featureCard}>
+
+          <View style={styles.featureIcon}>
+            <Text style={styles.featureEmoji}>👥</Text>
+          </View>
+
+          <View style={styles.featureText}>
+
+            <Text style={styles.featureTitle}>
+              Community
+            </Text>
+
+            <Text style={styles.featureSubtitle}>
+              Connect with people, discover local activities,
+              and grow together.
+            </Text>
+
+          </View>
+
+          <TouchableOpacity
+            style={styles.featureButton}
+            onPress={() => navigation.navigate("Community")}
+          >
+            <Text style={styles.featureButtonText}>
+              Explore →
+            </Text>
+          </TouchableOpacity>
+
+        </View>
+
+        {/* Around You */}
+        <View style={styles.featureCard}>
+
+          <View style={styles.featureIcon}>
+            <Text style={styles.featureEmoji}>📍</Text>
+          </View>
+
+          <View style={styles.featureText}>
+
+            <Text style={styles.featureTitle}>
+              Around You
+            </Text>
+
+            <Text style={styles.featureSubtitle}>
+              Discover people, activities, and opportunities
+              happening around you.
+            </Text>
+
+          </View>
+
+          <TouchableOpacity
+            style={styles.featureButton}
+          >
+            <Text style={styles.featureButtonText}>
+              Explore →
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {/* Impact Stories */}
+        <View style={styles.featureCard}>
+
+          <View style={styles.featureIcon}>
+            <Text style={styles.featureEmoji}>❤️</Text>
+          </View>
+
+          <View style={styles.featureText}>
+
+            <Text style={styles.featureTitle}>
+              Impact Stories
+            </Text>
+
+            <Text style={styles.featureSubtitle}>
+              See the good happening around you and get inspired
+              to make a difference.
+            </Text>
+
+          </View>
+
+          <TouchableOpacity
+            style={styles.featureButton}
+          >
+            <Text style={styles.featureButtonText}>
+              Explore →
+            </Text>
+          </TouchableOpacity>
+
+        </View>
+      </View>
+       </ScrollView> 
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
-  flex: 1,
-  backgroundColor: "#fff",
-  paddingTop: 30,
-},
+    flex: 1,
+    backgroundColor: "#f7f8fa",
+  },
+
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eeeeee",
+  },
+
   title: {
-  fontSize: 30,
-  fontWeight: "bold",
-  marginBottom: 40,
-  textAlign: "center",
-},
-  button: {
-    backgroundColor: "#007AFF",
-    padding: 15,
-    width: "80%",
-    borderRadius: 10,
-    marginBottom: 15,
+    fontSize: 28,
+    fontWeight: "bold",
   },
-  buttonText: {
-    color: "#fff",
+
+  content: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 25,
+  },
+
+  impactHero: {
+    width: "100%",
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    padding: 28,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#eeeeee",
+  },
+
+  impactEmoji: {
+    fontSize: 42,
+    marginBottom: 12,
+  },
+
+  impactTitle: {
+    fontSize: 27,
+    fontWeight: "bold",
     textAlign: "center",
-    fontSize: 18,
+    lineHeight: 34,
   },
-  subtitle: {
-    marginTop: 30,
+
+  impactSubtitle: {
+    fontSize: 16,
+    color: "#666666",
+    marginTop: 12,
+    textAlign: "center",
+  },
+
+  impactButton: {
+    marginTop: 22,
+    backgroundColor: "#111111",
+    paddingVertical: 13,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+  },
+
+  impactButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+
+  featureCard: {
+    width: "100%",
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: "#eeeeee",
+  },
+
+  featureIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#f2f2f2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+
+  featureEmoji: {
+    fontSize: 26,
+  },
+
+  featureText: {
+    marginBottom: 16,
+  },
+
+  featureTitle: {
     fontSize: 22,
+    fontWeight: "bold",
+  },
+
+  featureSubtitle: {
+    fontSize: 15,
+    color: "#666666",
+    lineHeight: 22,
+    marginTop: 6,
+  },
+
+  featureButton: {
+    alignSelf: "flex-start",
+    backgroundColor: "#111111",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+  },
+
+  featureButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
     fontWeight: "bold",
   },
 });

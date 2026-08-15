@@ -8,8 +8,6 @@ import { getDoc } from "firebase/firestore";
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image,} from "react-native";
 
 export default function Profile({ navigation }) {
-  alert("PROFILE SCREEN");
-  console.log("Navigation:", navigation);
 
 const [loading, setLoading] = useState(false);
 const [image, setImage] = useState(null);
@@ -67,8 +65,6 @@ setLoading(true);
   const uploadedPhoto = image
   ? await uploadToCloudinary(image)
   : "";
-  console.log(uploadedPhoto);
- alert(uploadedPhoto);
 
 await setDoc(
   doc(db, "users", auth.currentUser.uid),
@@ -161,6 +157,28 @@ const result = await ImagePicker.launchImageLibraryAsync({
     }}
   >
     Story Replies
+  </Text>
+</TouchableOpacity>
+
+<TouchableOpacity
+  onPress={() => navigation.navigate("SavedMoments")}
+  style={{
+    backgroundColor: "#FFB300",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+    width: "100%",
+  }}
+>
+  <Text
+    style={{
+      color: "white",
+      textAlign: "center",
+      fontWeight: "bold",
+      fontSize: 16,
+    }}
+  >
+    🔖 Saved Moments
   </Text>
 </TouchableOpacity>
 
