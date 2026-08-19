@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 import Home from "../screens/Home";
 import MomentHome from "../screens/MomentHome";
-import CreateImpact from "../screens/CreateImpact";
+import Impact from "../screens/Impact";
 import CommunityHome from "../screens/CommunityHome";
 import Profile from "../screens/Profile";
 
@@ -46,7 +46,7 @@ export default function MainTabs() {
 
       <Tab.Screen
         name="Impact"
-        component={CreateImpact}
+        component={Impact}
         options={{
           tabBarIcon: () => <Text>❤️</Text>,
         }}

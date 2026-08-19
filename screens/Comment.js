@@ -12,18 +12,25 @@ export default function Comment({ route }) {
   const postComment = async () => {
   if (comment.trim() === "") return;
 
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+  alert("Please login first!");
+  return;
+}
+
   try {
     await addDoc(collection(db, "posts", postId, "comments"), {
-      text: comment,
-      createdAt: serverTimestamp(),
-    });
+  text: comment,
+  userId: currentUser.uid,
+  createdAt: serverTimestamp(),
+});
      
    const postSnapshot = await getDoc(
   doc(db, "posts", postId)
 );
 
 const postData = postSnapshot.data();
-const currentUser = auth.currentUser;
 
 if (
   postData &&
@@ -41,14 +48,15 @@ if (
   const commenterName = userData.name || "Someone";
 
   await addDoc(collection(db, "Notification"), {
-    userId: postData.userId,
-    postId: postId,
-    message: commenterName + " commented on your Moment",
-    type: "comment",
-    commentText: comment,
-    isRead: false,
-    createdAt: serverTimestamp(),
-  });
+  userId: postData.userId,
+  senderId: currentUser.uid,
+  postId: postId,
+  message: commenterName + " commented on your Moment",
+  type: "comment",
+  commentText: comment,
+  isRead: false,
+  createdAt: serverTimestamp(),
+});
 }
 
     await updateDoc(doc(db, "posts", postId), {

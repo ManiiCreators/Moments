@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import { auth, db } from "../firebase";
 import {
@@ -14,6 +14,7 @@ import {
 
 export default function UserProfile({ route, navigation }) {
   const { user } = route.params;
+  const followInProgress = useRef(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(
   user.followers?.length || 0
@@ -51,6 +52,10 @@ useEffect(() => {
 }, [user.id]);
 
   const followUser = async () => {
+  if (followInProgress.current) return;
+
+  followInProgress.current = true;
+
   try {
     const currentUser = auth.currentUser;
 
@@ -114,8 +119,10 @@ await addDoc(collection(db, "Notification"), {
 }
   }
  catch (error) {
-    console.log(error);
-  }
+  console.log(error);
+} finally {
+  followInProgress.current = false;
+}
 };
 
   return (

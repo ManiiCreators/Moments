@@ -7,6 +7,8 @@ import Home from "./screens/Home";
 import MomentHome from "./screens/MomentHome";
 import CreatePost from "./screens/CreatePost";
 import CreateImpact from "./screens/CreateImpact";
+import RaiseYourVoice from "./screens/RaiseYourVoice";
+import RaiseQuestion from "./screens/RaiseQuestion";
 import Profile from "./screens/Profile";
 import React, { useEffect, useState } from "react";
 import { auth } from "./firebase";
@@ -53,11 +55,13 @@ if (loading) {
   <>
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="CreateImpact" component={CreateImpact} />
+      <Stack.Screen name="RaiseYourVoice" component={RaiseYourVoice}/>
+      <Stack.Screen name="RaiseQuestion" component={RaiseQuestion}/>
       <Stack.Screen name="CreatePost" component={CreatePost} />
       <Stack.Screen name="SavedMoments" component={SavedMoments} />
       <Stack.Screen name="Comment" component={Comment} />
       <Stack.Screen name="Search" component={Search} />
-     <Stack.Screen name="UserProfile" component={UserProfile}/>
+      <Stack.Screen name="UserProfile" component={UserProfile}/>
       <Stack.Screen name="Followers" component={Followers} />
       <Stack.Screen name="Following" component={Following} />
       <Stack.Screen name="Stories" component={Stories} />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, FlatList, Image, RefreshControl,} from "react-native";
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, FlatList, Image, RefreshControl,Share, Alert, } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebase";
 import {
   collection,
@@ -25,6 +26,8 @@ export default function Home({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [activeFeed, setActiveFeed] = useState("For You");
+  const [activeMenu, setActiveMenu] = useState(null);
   
 
 useEffect(() => {
@@ -57,7 +60,13 @@ const loadReports = async () => {
             userPhoto = userData.photoURL || null;
           }
         }
-
+       
+      console.log(
+  "POST OWNER:",
+  postData.userId,
+  "CURRENT USER:",
+  auth.currentUser?.uid
+);
         return {
           id: postDoc.id,
           ...postData,
@@ -228,6 +237,7 @@ console.log("Liker name:", likerName);
 
 await addDoc(collection(db, "Notification"), {
     userId: post.userId,
+    senderId: currentUser.uid,
     postId: postId,
     message: likerName + " liked your Moment",
     type: "like",
@@ -290,57 +300,32 @@ const savePost = async (postId) => {
 
 return (
   <SafeAreaView style={styles.container}>
-    <Text style={styles.title}>Moments Feed</Text>
+<View style={styles.topHeader}>
 
-    <View style={styles.topButtonsContainer}>
+  <Text style={styles.momentsLogo}>
+    M<Text style={styles.logoHeart}>♥️</Text>ments
+  </Text>
 
-  <View style={styles.buttonRow}>
-    <TouchableOpacity
-      style={styles.compactButton}
-      onPress={() => navigation.navigate("CreatePost")}
-    >
-      <Text style={styles.compactButtonText}>➕ Post</Text>
-    </TouchableOpacity>
+  <View style={styles.headerActions}>
 
     <TouchableOpacity
-      style={styles.compactButton}
-      onPress={() => navigation.navigate("CreateStory")}
-    >
-      <Text style={styles.compactButtonText}>⭕ Story</Text>
-    </TouchableOpacity>
-
-    <TouchableOpacity
-      style={styles.compactButton}
-      onPress={() => navigation.navigate("Profile")}
-    >
-      <Text style={styles.compactButtonText}>👤 Profile</Text>
-    </TouchableOpacity>
-  </View>
-
-  <View style={styles.buttonRow}>
-    <TouchableOpacity
-      style={styles.compactButton}
-      onPress={() => navigation.navigate("Search")}
-    >
-      <Text style={styles.compactButtonText}>🔍 Search</Text>
-    </TouchableOpacity>
-
-    <TouchableOpacity
-      style={styles.compactButton}
-      onPress={() => navigation.navigate("Messages")}
-    >
-      <Text style={styles.compactButtonText}>💬 Messages</Text>
-    </TouchableOpacity>
-
-    <TouchableOpacity
-      style={styles.compactButton}
+      style={styles.headerIconButton}
       onPress={() => navigation.navigate("Notifications")}
     >
-      <Text style={styles.compactButtonText}>🔔 Alerts</Text>
+      <Text style={styles.headerIcon}>♧</Text>
     </TouchableOpacity>
-  </View>
+
+    <TouchableOpacity
+      style={styles.headerIconButton}
+      onPress={() => navigation.navigate("Messages")}
+    >
+      <Text style={styles.headerIcon}>➤</Text>
+    </TouchableOpacity>
 
   </View>
+
+</View>
+
   {loading && (
   <View style={{ padding: 30, alignItems: "center" }}>
     <Text style={{ fontSize: 18 }}>
@@ -413,48 +398,225 @@ ListEmptyComponent={
     </View>
   ) : null
 }
-  ListHeaderComponent={
-    <FlatList
-      data={stories}
-      horizontal
-      scrollEnabled={true}
-      showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={{ paddingVertical: 5 }}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          onPress={() => {
-         setViewedStories((prev) => [...prev, item.id]);
-         navigation.navigate("Stories", { story: item });
-        }}
-          style={{ alignItems: "center", marginRight: 12 }}
-        >
-      <Image
-     source={
-     item.photoURL
-      ? { uri: item.photoURL }
-      : require("../assets/icon.png")
-    }
-     style={{
-     width: 64,
-     height: 64,
-     borderRadius: 32,
-     borderWidth: 3,
-     borderColor: viewedStories.includes(item.id)
-      ? "#999"
-      : "#ff0066",
-     }}
-     />
+ListHeaderComponent={
+  <View>
 
-          <Text style={{ marginTop: 3 }}>
-            {item.name || "Unknown"}
+    {/* ================================
+        STORIES SECTION
+    ================================= */}
+
+    <View style={styles.storiesSection}>
+
+      <View style={styles.storiesHeader}>
+
+  <View>
+    <Text style={styles.storiesTitle}>
+      Moments Stories
+    </Text>
+
+    <Text style={styles.storiesSubtitle}>
+      Little moments, lasting memories.
+    </Text>
+  </View>
+
+  <View style={{ flexDirection: "row", alignItems: "center" }}>
+
+    {/* CREATE STORY */}
+    <TouchableOpacity
+      style={styles.addStoryButton}
+      onPress={() =>
+        navigation.navigate("CreateStory")
+      }
+    >
+      <Text style={styles.addStoryText}>
+        ＋ Story
+      </Text>
+    </TouchableOpacity>
+
+  </View>
+
+</View>
+
+
+      {/* STORIES LIST */}
+
+      {stories.length > 0 ? (
+
+        <FlatList
+          data={stories}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.storyList}
+
+          renderItem={({ item }) => (
+
+            <TouchableOpacity
+              onPress={() => {
+
+                setViewedStories((prev) => [
+                  ...prev,
+                  item.id,
+                ]);
+
+                navigation.navigate("Stories", {
+                  story: item,
+                });
+
+              }}
+
+              style={styles.storyItem}
+            >
+
+              <View
+                style={[
+                  styles.storyRing,
+                  {
+                    borderColor:
+                      viewedStories.includes(item.id)
+                        ? "#C8C1BA"
+                        : "#B58B5A",
+                  },
+                ]}
+              >
+
+                <Image
+                  source={
+                    item.photoURL
+                      ? { uri: item.photoURL }
+                      : require("../assets/icon.png")
+                  }
+
+                  style={styles.storyImage}
+                />
+
+              </View>
+
+              <Text
+                style={styles.storyName}
+                numberOfLines={1}
+              >
+                {item.name || "Unknown"}
+              </Text>
+
+            </TouchableOpacity>
+
+          )}
+        />
+
+      ) : (
+
+        <View style={styles.emptyStories}>
+
+          <Text style={styles.emptyStoriesIcon}>
+            ✨
           </Text>
-        </TouchableOpacity>
+
+          <View style={{ flex: 1, justifyContent: "center" }}>
+
+            <Text style={styles.emptyStoriesTitle}>
+              No stories yet
+            </Text>
+
+            <Text style={styles.emptyStoriesText}>
+              Share a little moment from your day.
+            </Text>
+
+          </View>
+
+        </View>
+
       )}
-    />
-  }
-  keyExtractor={(item) => item.id}
-  contentContainerStyle={{
+
+    </View>
+
+{/* ================================
+    CREATE MOMENT CARD
+================================= */}
+
+<View style={styles.createMomentCard}>
+
+  <View style={styles.createMomentIconCircle}>
+    <Text style={styles.createMomentIcon}>
+      ✨
+    </Text>
+  </View>
+
+  <View style={styles.createMomentContent}>
+
+    <Text style={styles.createMomentTitle}>
+      What's on your mind?
+    </Text>
+
+    <Text style={styles.createMomentSubtitle}>
+      Create a Moment and let the world know.
+    </Text>
+
+  </View>
+
+  <TouchableOpacity
+    style={styles.createMomentButton}
+    onPress={() =>
+      navigation.navigate("CreatePost")
+    }
+  >
+    <Text style={styles.createMomentButtonText}>
+      ＋ Create Moment
+    </Text>
+  </TouchableOpacity>
+
+</View>
+
+    {/* ================================
+        FEED TABS
+    ================================= */}
+
+    <View style={styles.feedTabs}>
+
+      {[
+        "For You",
+        "Following",
+        "Nearby",
+        "Trending",
+      ].map((tab) => (
+
+        <TouchableOpacity
+          key={tab}
+          onPress={() =>
+            setActiveFeed(tab)
+          }
+
+          style={[
+            styles.feedTab,
+
+            activeFeed === tab &&
+              styles.activeFeedTab,
+          ]}
+        >
+
+          <Text
+            style={[
+              styles.feedTabText,
+
+              activeFeed === tab &&
+                styles.activeFeedTabText,
+            ]}
+          >
+            {tab}
+          </Text>
+
+        </TouchableOpacity>
+
+      ))}
+
+    </View>
+
+  </View>
+}
+
+keyExtractor={(item) => item.id}
+
+contentContainerStyle={{
   padding: 15,
 }}
   renderItem={({ item }) => (
@@ -473,49 +635,131 @@ ListEmptyComponent={
     elevation: 3,
   }}
 >
-  <View
-  style={{
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    paddingBottom: 6,
-  }}
->
+<View style={styles.postHeader}>
+
   <Image
     source={
       item.userPhoto
         ? { uri: item.userPhoto }
         : require("../assets/icon.png")
     }
-    style={{
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      marginRight: 12,
-    }}
+    style={styles.postAvatar}
   />
 
-  <View style={{ flex: 1 }}>
+  <View style={styles.postUserInfo}>
+
     <Text
-      style={{
-        fontSize: 18,
-        fontWeight: "bold",
-      }}
+      style={styles.postUserName}
+      numberOfLines={1}
     >
       {item.userName || "Unknown User"}
     </Text>
 
-    <Text
-      style={{
-        fontSize: 13,
-        color: "#777",
-        marginTop: 2,
-      }}
-    >
-      Moments
-    </Text>
+    <View style={styles.postMetaRow}>
+      <Text style={styles.postMeta}>
+        Moments
+      </Text>
+
+      <Text style={styles.metaDot}>
+        •
+      </Text>
+
+      <Text style={styles.postMeta}>
+        Public
+      </Text>
+    </View>
+
   </View>
-</View>    
+
+  {/* MORE MENU */}
+<View style={{ position: "relative" }}>
+
+  <TouchableOpacity
+    style={styles.moreButton}
+    onPress={() => {
+      setActiveMenu(
+        activeMenu === item.id ? null : item.id
+      );
+    }}
+  >
+    <Text style={styles.moreButtonText}>•••</Text>
+  </TouchableOpacity>
+
+  {activeMenu === item.id && (
+    <View style={styles.moreMenu}>
+
+      <TouchableOpacity
+        style={styles.menuItem}
+        onPress={async () => {
+          try {
+            await Share.share({
+              message: '${item.userName || "Someone"} shared a Moment on Moments',
+            });
+          } catch (error) {
+            console.log("SHARE ERROR:", error);
+          }
+
+          setActiveMenu(null);
+        }}
+      >
+        <Text style={styles.menuIcon}>➤</Text>
+        <Text style={styles.menuText}>Share</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.menuItem}
+        onPress={() => {
+          savePost(item.id);
+          setActiveMenu(null);
+        }}
+      >
+        <Text style={styles.menuIcon}>🔖</Text>
+
+        <Text style={styles.menuText}>
+          {item.savedBy?.includes(auth.currentUser?.uid)
+            ? "Unsave"
+            : "Save"}
+        </Text>
+      </TouchableOpacity>
+
+      {item.userId === auth.currentUser?.uid && (
+  <TouchableOpacity
+    style={styles.menuItem}
+    onPress={() => {
+      Alert.alert(
+        "Delete Moment",
+        "Are you sure you want to delete this Moment?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              setActiveMenu(null);
+              await deletePost(item.id);
+            },
+          },
+        ]
+      );
+    }}
+  >
+    <Text style={styles.menuIcon}>🗑️</Text>
+
+    <Text style={[styles.menuText, { color: "#C62828" }]}>
+      Delete
+    </Text>
+  </TouchableOpacity>
+)}
+
+    </View>
+  )}
+
+</View>
+</View>
+
 <Text
   style={{
     fontSize: 16,
@@ -540,102 +784,92 @@ ListEmptyComponent={
   />
 ) : null}
 
-<View
-  style={{
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-  }}
->
-  <TouchableOpacity
-  onPress={() => likePost(item.id)}
-  style={{
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: item.likedBy?.includes(auth.currentUser?.uid)
-      ? "#ffdddd"
-      : "#eeeeee",
-  }}
->
-  <Text
-  style={{
-    fontSize: 16,
-    fontWeight: "bold",
-  }}
->
-  {item.likedBy?.includes(auth.currentUser?.uid)
-    ? "💔 Unlike " + (item.likes || 0)
-    : "❤️ Like " + (item.likes || 0)}
-</Text>
-</TouchableOpacity> 
+<View style={styles.classicActionRow}>
 
+  {/* LIKE */}
   <TouchableOpacity
-  onPress={() => navigation.navigate("Comment", { postId: item.id })}
-  style={{
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: "#eeeeee",
-  }}
->
-  <Text
-    style={{
-      fontSize: 16,
-      fontWeight: "bold",
-    }}
+    onPress={() => likePost(item.id)}
+    style={styles.classicActionButton}
   >
-    💬 comments {item.comments || 0}
-  </Text>
-</TouchableOpacity>
+    <Ionicons
+      name={
+        item.likedBy?.includes(auth.currentUser?.uid)
+          ? "heart"
+          : "heart-outline"
+      }
+      size={27}
+      color={
+        item.likedBy?.includes(auth.currentUser?.uid)
+          ? "#E53935"
+          : "#2C241F"
+      }
+    />
 
-<TouchableOpacity
-  onPress={() => savePost(item.id)}
-  style={{
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: item.savedBy?.includes(auth.currentUser?.uid)
-      ? "#fff3cd"
-      : "#eeeeee",
-  }}
->
-  <Text
-    style={{
-      fontSize: 16,
-      fontWeight: "bold",
-    }}
+    <Text style={styles.classicActionCount}>
+      {item.likes || 0}
+    </Text>
+  </TouchableOpacity>
+
+
+  {/* COMMENT */}
+  <TouchableOpacity
+    onPress={() =>
+      navigation.navigate("Comment", {
+        postId: item.id,
+      })
+    }
+    style={styles.classicActionButton}
   >
-    {item.savedBy?.includes(auth.currentUser?.uid)
-      ? "🔖 Saved"
-      : "🔖 Save"}
-  </Text>
-</TouchableOpacity>
+    <Ionicons
+      name="chatbubble-outline"
+      size={26}
+      color="#2C241F"
+    />
+
+    <Text style={styles.classicActionCount}>
+      {item.comments || 0}
+    </Text>
+  </TouchableOpacity>
+
+
+  {/* SAVE */}
+  <TouchableOpacity
+    onPress={() => savePost(item.id)}
+    style={styles.classicActionButton}
+  >
+    <Ionicons
+      name={
+        item.savedBy?.includes(auth.currentUser?.uid)
+          ? "bookmark"
+          : "bookmark-outline"
+      }
+      size={27}
+      color="#2C241F"
+    />
+  </TouchableOpacity>
+
+
+  {/* SHARE */}
+  <TouchableOpacity
+    onPress={async () => {
+      try {
+        await Share.share({
+          message: '${item.userName || "Someone"} shared a Moment on Moments',
+        });
+      } catch (error) {
+        console.log("SHARE ERROR:", error);
+      }
+    }}
+    style={styles.classicActionButton}
+  >
+    <Ionicons
+      name="send-outline"
+      size={27}
+      color="#2C241F"
+    />
+  </TouchableOpacity>
+
 </View>
-<TouchableOpacity
-  onPress={() => deletePost(item.id)}
-  style={{
-    alignSelf: "flex-end",
-    backgroundColor: "#ffe5e5",
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    marginTop: 3,
-    marginRight: 12,
-    marginBottom: 6,
-  }}
->
-  <Text
-    style={{
-      color: "#d60000",
-      fontSize: 14,
-      fontWeight: "600",
-    }}
-  >
-    🗑️ Delete
-  </Text>
-</TouchableOpacity>
  </View>
   )}
 />
@@ -704,4 +938,480 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
   },
+  heroSection: {
+  marginHorizontal: 15,
+  marginBottom: 10,
+  padding: 22,
+  borderRadius: 24,
+  backgroundColor: "#F8F3EC",
+  borderWidth: 1,
+  borderColor: "#E8DED1",
+},
+
+heroTextContainer: {
+  marginBottom: 18,
+},
+
+heroSmallTitle: {
+  fontSize: 12,
+  fontWeight: "700",
+  letterSpacing: 3,
+  color: "#9A8065",
+  marginBottom: 8,
+},
+
+heroTitle: {
+  fontSize: 28,
+  fontWeight: "800",
+  color: "#2C241F",
+  lineHeight: 34,
+},
+
+heroSubtitle: {
+  fontSize: 15,
+  color: "#746A63",
+  lineHeight: 22,
+  marginTop: 8,
+},
+
+createMomentButton: {
+  alignSelf: "flex-start",
+  backgroundColor: "#2C241F",
+  paddingVertical: 11,
+  paddingHorizontal: 18,
+  borderRadius: 22,
+},
+
+createMomentButtonText: {
+  color: "#FFFFFF",
+  fontSize: 14,
+  fontWeight: "700",
+},
+storiesSection: {
+  marginBottom: 18,
+},
+
+storiesHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 12,
+  paddingHorizontal: 2,
+},
+
+storiesTitle: {
+  fontSize: 20,
+  fontWeight: "800",
+  color: "#2C241F",
+},
+
+storiesSubtitle: {
+  fontSize: 13,
+  color: "#8A817A",
+  marginTop: 3,
+},
+
+addStoryButton: {
+  backgroundColor: "#F3ECE4",
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 18,
+  borderWidth: 1,
+  borderColor: "#E4D8CA",
+},
+
+addStoryText: {
+  fontSize: 13,
+  fontWeight: "700",
+  color: "#5C4B3D",
+},
+
+storyList: {
+  paddingVertical: 4,
+  paddingRight: 10,
+},
+
+storyItem: {
+  width: 76,
+  alignItems: "center",
+  marginRight: 14,
+},
+
+storyRing: {
+  width: 68,
+  height: 68,
+  borderRadius: 34,
+  borderWidth: 2.5,
+  padding: 3,
+  backgroundColor: "#FFFFFF",
+},
+
+storyImage: {
+  width: "100%",
+  height: "100%",
+  borderRadius: 31,
+},
+
+storyName: {
+  marginTop: 6,
+  fontSize: 13,
+  fontWeight: "600",
+  color: "#403831",
+  maxWidth: 72,
+  textAlign: "center",
+},
+
+emptyStories: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#FBF8F4",
+  borderRadius: 18,
+  borderWidth: 1,
+  borderColor: "#EEE4D8",
+  padding: 14,
+},
+
+emptyStoriesIcon: {
+  fontSize: 28,
+  marginRight: 12,
+},
+
+emptyStoriesTitle: {
+  fontSize: 15,
+  fontWeight: "700",
+  color: "#403831",
+},
+
+emptyStoriesText: {
+  fontSize: 13,
+  color: "#8A817A",
+  marginTop: 3,
+},
+topHeader: {
+  height: 58,
+  paddingHorizontal: 18,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  backgroundColor: "#FFFFFF",
+  borderBottomWidth: 1,
+  borderBottomColor: "#F0ECE7",
+},
+
+momentsLogo: {
+  fontSize: 28,
+  fontWeight: "800",
+  color: "#2C241F",
+  letterSpacing: -1,
+},
+
+logoHeart: {
+  color: "#E85B68",
+  fontSize: 25,
+},
+
+headerActions: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 4,
+},
+
+headerIconButton: {
+  width: 40,
+  height: 40,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+headerIcon: {
+  fontSize: 25,
+  color: "#2C241F",
+  fontWeight: "500",
+},
+feedTabs: {
+  flexDirection: "row",
+  paddingHorizontal: 15,
+  paddingVertical: 8,
+  borderBottomWidth: 1,
+  borderBottomColor: "#EEE9E4",
+  backgroundColor: "#FFFFFF",
+},
+
+feedTab: {
+  flex: 1,
+  alignItems: "center",
+  paddingVertical: 11,
+  marginHorizontal: 2,
+  borderRadius: 18,
+},
+
+activeFeedTab: {
+  backgroundColor: "#2C241F",
+},
+
+feedTabText: {
+  fontSize: 13,
+  fontWeight: "700",
+  color: "#817871",
+},
+
+activeFeedTabText: {
+  color: "#FFFFFF",
+},
+postHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  paddingHorizontal: 14,
+  paddingTop: 14,
+  paddingBottom: 2,
+},
+
+postUserSection: {
+  flexDirection: "row",
+  alignItems: "center",
+  flex: 1,
+},
+
+postAvatar: {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+  marginRight: 12,
+},
+
+postUserName: {
+  fontSize: 17,
+  fontWeight: "800",
+  color: "#2C241F",
+},
+
+postMeta: {
+  fontSize: 13,
+  color: "#8A817A",
+  marginTop: 2,
+},
+
+moreButton: {
+  width: 38,
+  height: 38,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+moreButtonText: {
+  fontSize: 19,
+  fontWeight: "800",
+  color: "#6F665F",
+},
+postHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 14,
+  paddingTop: 14,
+  paddingBottom: 2,
+},
+
+postAvatar: {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+  marginRight: 12,
+},
+
+postUserInfo: {
+  flex: 1,
+  justifyContent: "center",
+},
+
+postUserName: {
+  fontSize: 17,
+  fontWeight: "800",
+  color: "#2C241F",
+},
+
+postMetaRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginTop: 3,
+},
+
+postMeta: {
+  fontSize: 13,
+  color: "#8A817A",
+},
+
+metaDot: {
+  fontSize: 13,
+  color: "#B5ADA6",
+  marginHorizontal: 6,
+},
+classicActionRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  borderTopWidth: 1,
+  borderColor: "#F0EAE3",
+  backgroundColor: "#FFFFFF",
+},
+
+classicActionButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  minWidth: 52,
+  minHeight: 36,
+  marginRight: 18,
+},
+
+classicActionIcon: {
+  fontSize: 27,
+  color: "#3A332E",
+  fontWeight: "400",
+},
+
+likedIcon: {
+  color: "#E53945",
+},
+
+classicActionCount: {
+  fontSize: 14,
+  fontWeight: "700",
+  color: "#5F5751",
+  marginLeft: 6,
+},
+
+moreButton: {
+  width: 40,
+  height: 40,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+moreButtonText: {
+  fontSize: 20,
+  fontWeight: "800",
+  color: "#5F5751",
+  letterSpacing: 2,
+},
+moreMenu: {
+  position: "absolute",
+  right: 0,
+  top: 40,
+  width: 145,
+  backgroundColor: "#FFFFFF",
+  borderRadius: 16,
+  paddingVertical: 6,
+  borderWidth: 1,
+  borderColor: "#E8E2DC",
+
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 4,
+  },
+  shadowOpacity: 0.15,
+  shadowRadius: 8,
+
+  elevation: 8,
+
+  zIndex: 1000,
+},
+
+menuItem: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingVertical: 12,
+  paddingHorizontal: 14,
+},
+
+menuIcon: {
+  fontSize: 18,
+  width: 28,
+},
+
+menuText: {
+  fontSize: 15,
+  fontWeight: "600",
+  color: "#3A332E",
+},
+addMomentButton: {
+  backgroundColor: "#2C241F",
+  paddingVertical: 8,
+  paddingHorizontal: 11,
+  borderRadius: 18,
+  marginRight: 6,
+},
+
+addMomentText: {
+  fontSize: 13,
+  fontWeight: "700",
+  color: "#FFFFFF",
+},
+createMomentCard: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 16,
+  paddingVertical: 10,
+  paddingHorizontal: 13,
+  borderRadius: 20,
+  backgroundColor: "#F8F0E5",
+  borderWidth: 1,
+  borderColor: "#E9D9C5",
+
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 2,
+  },
+  shadowOpacity: 0.05,
+  shadowRadius: 4,
+  elevation: 2,
+},
+
+createMomentIconCircle: {
+  width: 44,
+  height: 44,
+  borderRadius: 22,
+  backgroundColor: "#B07A36",
+  alignItems: "center",
+  justifyContent: "center",
+  marginRight: 10,
+},
+
+createMomentIcon: {
+  fontSize: 22,
+},
+
+createMomentContent: {
+  flex: 1,
+  justifyContent: "center",
+  paddingRight: 6,
+},
+
+createMomentTitle: {
+  fontSize: 15,
+  fontWeight: "800",
+  color: "#2C241F",
+},
+
+createMomentSubtitle: {
+  fontSize: 10.5,
+  color: "#746A63",
+  marginTop: 2,
+  lineHeight: 14,
+},
+
+createMomentButton: {
+  backgroundColor: "#2C241F",
+  paddingVertical: 9,
+  paddingHorizontal: 10,
+  borderRadius: 19,
+},
+
+createMomentButtonText: {
+  color: "#FFFFFF",
+  fontSize: 10.5,
+  fontWeight: "800",
+},
 });

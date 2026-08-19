@@ -52,14 +52,15 @@ if (story.uid !== auth.currentUser.uid) {
   const senderName = userData.name || "Someone";
 
   await addDoc(collection(db, "Notification"), {
-    userId: story.uid,
-    message: senderName + " replied to your Story",
-    type: "storyReply",
-    storyId: story.id,
-    replyText: message,
-    isRead: false,
-    createdAt: serverTimestamp(),
-  });
+  userId: story.uid,
+  senderId: auth.currentUser.uid,
+  message: senderName + " replied to your story",
+  type: "storyReply",
+  storyId: story.id,
+  replyText: message,
+  isRead: false,
+  createdAt: serverTimestamp(),
+});
 }
 
     Alert.alert("Success", "Reply sent!");
