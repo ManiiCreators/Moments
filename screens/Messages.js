@@ -31,14 +31,32 @@ useEffect(() => {
     )
   );
 
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const chatList = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+ const unsubscribe = onSnapshot(q, (snapshot) => {
+  const chatList = snapshot.docs
+    .map((chatDoc) => ({
+      id: chatDoc.id,
+      ...chatDoc.data(),
+    }))
+    .filter((item) => {
+      const otherUserId = item.participants.find(
+  (participantId) =>
+    participantId !== auth.currentUser.uid
+);
 
-    setChats(chatList);
-  });
+console.log(
+  "OPENING CHAT:",
+  item.id,
+  "OTHER USER:",
+  otherUserId
+);
+
+      return !!otherUserId;
+    });
+
+  console.log("CHAT LIST:", chatList);
+
+  setChats(chatList);
+});
 
   return unsubscribe;
 }, []);
@@ -51,6 +69,13 @@ useEffect(() => {
        renderItem={({ item }) => {
   const otherUserId = item.participants?.find(
   (id) => id !== auth.currentUser.uid
+);
+
+console.log(
+  "OPENING CHAT:",
+  item.id,
+  "OTHER USER:",
+  otherUserId
 );
 
 const chatUser = {

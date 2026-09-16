@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { AppState } from "react-native";
-import { View, Text, TextInput, TouchableOpacity, FlatList, Image, KeyboardAvoidingView, Platform,} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, FlatList, Image, KeyboardAvoidingView, Platform, Modal, Pressable,} from "react-native";
 import { auth, db } from "../firebase";
-import { collection, addDoc, setDoc, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc} from "firebase/firestore";
+import { collection, addDoc, setDoc, query, orderBy, onSnapshot, Timestamp, doc, deleteDoc, arrayUnion,} from "firebase/firestore";
 
 export default function Chat({ route, navigation }) {
   const { user, userId } = route.params || {};
@@ -13,6 +13,8 @@ export default function Chat({ route, navigation }) {
   
 
   const [replyingTo, setReplyingTo] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+const [optionsVisible, setOptionsVisible] = useState(false);
 
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -24,7 +26,7 @@ export default function Chat({ route, navigation }) {
 useEffect(() => {
   if (!currentUserId) return;
 
-  const myUserRef = doc(db, "Users", currentUserId);
+  const myUserRef = doc(db, "users", currentUserId);
 
   setDoc(
     myUserRef,
@@ -52,20 +54,25 @@ useEffect(() => {
 useEffect(() => {
   if (!otherUserId) return;
 
-  const otherUserRef = doc(db, "Users", otherUserId);
+  const otherUserRef = doc(db, "users", otherUserId);
 
-  const unsubscribe = onSnapshot(otherUserRef, (snapshot) => {
-  if (snapshot.exists()) {
-    const data = snapshot.data();
+const unsubscribe = onSnapshot(
+  otherUserRef,
+  (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.data();
 
-    setIsOnline(data.isOnline === true);
-    setIsTyping(data.isTyping === true);
-
-  } else {
-    setIsOnline(false);
-    setIsTyping(false);
+      setIsOnline(data.isOnline === true);
+      setIsTyping(data.isTyping === true);
+    } else {
+      setIsOnline(false);
+      setIsTyping(false);
+    }
+  },
+  (error) => {
+    console.log("USER STATUS ERROR:", error);
   }
-});
+);
 
   return unsubscribe;
 }, [otherUserId]);
@@ -82,35 +89,53 @@ useEffect(() => {
 
   const q = query(messagesRef, orderBy("createdAt", "asc"));
 
-const unsubscribe = onSnapshot(q, (snapshot) => {
-  const messageList = snapshot.docs.map((doc) => ({
-  id: doc.id,
-  ...doc.data(),
-}));
+const unsubscribe = onSnapshot(
+  q,
+  (snapshot) => {
+  const messageList = snapshot.docs
+  .map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }))
+  .filter(
+    (item) =>
+      !item.deletedFor?.includes(currentUserId)
+  );
 
-// Mark received messages as delivered
-messageList.forEach(async (item) => {
-  if (
-    item.senderId !== auth.currentUser?.uid &&
-    item.status === "sent"
-  ) {
-    await setDoc(
-      doc(db, "chats", chatId, "messages", item.id),
-      {
-        status: "delivered",
-      },
-      { merge: true }
-    );
+    // Mark received messages as delivered
+    messageList.forEach(async (item) => {
+      if (
+        item.senderId !== auth.currentUser?.uid &&
+        item.status === "sent"
+      ) {
+        await setDoc(
+          doc(db, "chats", chatId, "messages", item.id),
+          {
+            status: "delivered",
+          },
+          { merge: true }
+        );
+      }
+    });
+
+    console.log("MESSAGES:", messageList);
+
+    const visibleMessages = messageList.filter(
+  (item) =>
+    !item.deletedFor ||
+    !item.deletedFor.includes(currentUserId)
+);
+
+setMessages(visibleMessages);
+
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  },
+  (error) => {
+    console.log("CHAT MESSAGES ERROR:", error);
   }
-});
-
-console.log("MESSAGES:", messageList);
-
-setMessages(messageList);
-   setTimeout(() => {
-  flatListRef.current?.scrollToEnd({ animated: true });
-}, 100);
-});
+);
 
   return unsubscribe;
 }, [chatId]);
@@ -120,7 +145,7 @@ const handleTyping = async (text) => {
 
   if (!currentUserId) return;
 
-  const myUserRef = doc(db, "Users", currentUserId);
+  const myUserRef = doc(db, "users", currentUserId);
 
   if (text.trim().length > 0) {
     await setDoc(
@@ -155,54 +180,106 @@ const handleTyping = async (text) => {
   }
 };
 
-const handleDeleteMessage = async (messageId) => {
+// DELETE FOR ME
+const handleDeleteForMe = async (messageId) => {
   try {
-    await deleteDoc(
-      doc(db, "chats", chatId, "messages", messageId)
-    );
-  } catch (error) {
-    console.log("Error deleting message:", error);
-  }
-};
-
-const handleSend = async () => {
-
-  if (!message.trim()) return;
-
-  const text = message.trim();
-
-  setMessage("");
-
-  try {
-    await addDoc(
-  collection(db, "chats", chatId, "messages"),
-  {
-    text: text,
-    senderId: auth.currentUser.uid,
-    createdAt: Timestamp.now(),
-    status: "sent",
-  }
-  );
-
     await setDoc(
-      doc(db, "chats", chatId),
+      doc(db, "chats", chatId, "messages", messageId),
       {
-      participants: [
-     auth.currentUser.uid,
-     user.uid || user.id,
-     ],
-        lastMessage: text,
-        lastMessageAt: Timestamp.now(),
-        userName: user.name || "Unknown User",
-        userPhotoURL: user.photoURL || "",
+        deletedFor: arrayUnion(currentUserId),
       },
       { merge: true }
     );
 
+    console.log("Deleted for me successfully");
   } catch (error) {
-    console.log("Error sending message:", error);
+    console.log("DELETE FOR ME ERROR:", error);
   }
-  };
+};
+
+
+// DELETE FOR EVERYONE
+const handleDeleteForEveryone = async (messageId) => {
+  try {
+    await deleteDoc(
+      doc(db, "chats", chatId, "messages", messageId)
+    );
+
+    console.log("Deleted for everyone successfully");
+  } catch (error) {
+    console.log("DELETE FOR EVERYONE ERROR:", error);
+  }
+};
+
+const handleSend = async () => {
+  console.log("SEND BUTTON CLICKED");
+
+  if (!message.trim()) {
+    console.log("Message is empty");
+    return;
+  }
+
+  if (!currentUserId || !otherUserId) {
+    console.log("User ID missing");
+    return;
+  }
+
+  const text = message.trim();
+
+  try {
+    console.log("Sending:", text);
+
+    // Create reply data
+    const replyData = replyingTo
+      ? {
+          messageId: replyingTo.id,
+          text: replyingTo.text || "",
+          senderId: replyingTo.senderId || "",
+        }
+      : null;
+
+    // STEP 1: Create/update chat
+    await setDoc(
+      doc(db, "chats", chatId),
+      {
+        participants: [
+          currentUserId,
+          otherUserId,
+        ],
+        lastMessage: text,
+        lastMessageAt: Timestamp.now(),
+        userName: user?.name || "Unknown User",
+        userPhotoURL: user?.photoURL || "",
+      },
+      { merge: true }
+    );
+
+    console.log("Chat updated successfully");
+
+    // STEP 2: Send message
+    await addDoc(
+      collection(db, "chats", chatId, "messages"),
+      {
+        text: text,
+        senderId: currentUserId,
+        createdAt: Timestamp.now(),
+        status: "sent",
+        replyTo: replyData,
+      }
+    );
+
+    console.log("MESSAGE SENT SUCCESSFULLY");
+
+    // Clear input
+    setMessage("");
+
+    // Clear reply
+    setReplyingTo(null);
+
+  } catch (error) {
+    console.log("SEND ERROR:", error);
+  }
+};
   return (
   <KeyboardAvoidingView
     style={{ flex: 1 }}
@@ -282,10 +359,13 @@ const handleSend = async () => {
         marginVertical: 5,
       }}
     >
-    <TouchableOpacity
-  onLongPress={() => {
-    setReplyingTo(item);
-  }}
+  <TouchableOpacity
+
+onLongPress={() => {
+  setSelectedMessage(item);
+  setOptionsVisible(true);
+}}
+
   activeOpacity={0.8}
   style={{
     backgroundColor: isMyMessage
@@ -295,44 +375,75 @@ const handleSend = async () => {
     paddingVertical: 10,
     borderRadius: 18,
     maxWidth: "75%",
-   }}
-   > 
-        <Text
-          style={{
-            fontSize: 16,
-            color: isMyMessage ? "white" : "black",
-          }}
-        >
-          {item.text}
-        </Text>
-    <Text
-    style={{
-    fontSize: 11,
-    color: isMyMessage ? "#ffe5eb" : "#777",
-    marginTop: 4,
-    alignSelf: "flex-end",
-    }}
-   >
-  {item.createdAt?.toDate
-    ? item.createdAt.toDate().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : ""}
+  }}
+>
 
-    {isMyMessage && (
+  {/* SHOW REPLIED MESSAGE */}
+  {item.replyTo && (
+    <View
+      style={{
+        backgroundColor: isMyMessage
+          ? "rgba(255,255,255,0.15)"
+          : "#d5d5d5",
+        padding: 8,
+        borderRadius: 10,
+        marginBottom: 8,
+      }}
+    >
+      <Text
+        numberOfLines={1}
+        style={{
+          fontSize: 13,
+          fontWeight: "bold",
+          color: isMyMessage ? "white" : "#555",
+        }}
+      >
+        {item.replyTo.text}
+      </Text>
+    </View>
+  )}
+
+  {/* ACTUAL MESSAGE */}
+  <Text
+    style={{
+      fontSize: 16,
+      color: isMyMessage ? "white" : "black",
+    }}
+  >
+    {item.text}
+  </Text>
+
+  {/* TIME */}
   <Text
     style={{
       fontSize: 11,
-      color: "#ffe5eb",
-      marginLeft: 4,
+      color: isMyMessage ? "#ffe5eb" : "#777",
+      marginTop: 4,
+      alignSelf: "flex-end",
     }}
   >
-    {item.status === "delivered" ? "✓✓" : "✓"}
+    {item.createdAt?.toDate
+      ? item.createdAt.toDate().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : ""}
+
+    {isMyMessage && (
+      <Text
+        style={{
+          fontSize: 11,
+          color: "#ffe5eb",
+          marginLeft: 4,
+        }}
+      >
+        {item.status === "delivered" ? "✓✓" : "✓"}
+      </Text>
+    )}
   </Text>
-   )}
-    </Text>
-  </TouchableOpacity>
+
+</TouchableOpacity>
+
     </View>
     );
     }}
@@ -342,36 +453,70 @@ const handleSend = async () => {
     {replyingTo && (
   <View
     style={{
-      padding: 10,
-      backgroundColor: "#f2f2f2",
-      borderTopWidth: 1,
-      borderTopColor: "#ddd",
+      marginHorizontal: 10,
+      marginTop: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      backgroundColor: "#fff",
+      borderRadius: 16,
+      borderLeftWidth: 4,
+      borderLeftColor: "#ff4f6d",
+      borderWidth: 1,
+      borderColor: "#eee",
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
     }}
   >
-    <Text style={{ fontSize: 13, color: "#777" }}>
-      Replying to:
+    {/* Reply title */}
+    <Text
+      style={{
+        fontSize: 13,
+        fontWeight: "bold",
+        color: "#ff4f6d",
+        marginBottom: 4,
+      }}
+    >
+      ↩️ Replying to
     </Text>
 
+    {/* Replied message */}
     <Text
       numberOfLines={1}
       style={{
         fontSize: 15,
-        fontWeight: "bold",
-        marginTop: 3,
+        color: "#333",
+        paddingRight: 35,
       }}
     >
       {replyingTo.text}
     </Text>
 
+    {/* Cancel reply */}
     <TouchableOpacity
       onPress={() => setReplyingTo(null)}
       style={{
         position: "absolute",
-        right: 10,
-        top: 10,
+        right: 12,
+        top: 12,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: "#f5f5f5",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      <Text style={{ fontSize: 18 }}>✕</Text>
+      <Text
+        style={{
+          fontSize: 18,
+          color: "#777",
+          fontWeight: "bold",
+        }}
+      >
+        ✕
+      </Text>
     </TouchableOpacity>
   </View>
 )}
@@ -417,6 +562,160 @@ const handleSend = async () => {
       </TouchableOpacity>
     </View>
 
+    <Modal
+  visible={optionsVisible}
+  transparent={true}
+  animationType="fade"
+  onRequestClose={() => {
+    setOptionsVisible(false);
+    setSelectedMessage(null);
+  }}
+>
+  <Pressable
+    onPress={() => {
+      setOptionsVisible(false);
+      setSelectedMessage(null);
+    }}
+    style={{
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "center",
+      paddingHorizontal: 30,
+    }}
+  >
+    <Pressable
+      onPress={() => {}}
+      style={{
+        backgroundColor: "white",
+        borderRadius: 20,
+        paddingVertical: 10,
+        overflow: "hidden",
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 22,
+          fontWeight: "bold",
+          paddingHorizontal: 25,
+          paddingTop: 20,
+          paddingBottom: 8,
+        }}
+      >
+        Message options
+      </Text>
+
+      <Text
+        style={{
+          fontSize: 15,
+          color: "#777",
+          paddingHorizontal: 25,
+          paddingBottom: 15,
+        }}
+      >
+        Choose an action
+      </Text>
+
+      {/* Reply */}
+      <TouchableOpacity
+        onPress={() => {
+          setReplyingTo(selectedMessage);
+          setOptionsVisible(false);
+          setSelectedMessage(null);
+        }}
+        style={{
+          paddingVertical: 16,
+          paddingHorizontal: 25,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 17,
+            color: "#ff4f6d",
+          }}
+        >
+          Reply
+        </Text>
+      </TouchableOpacity>
+
+      {/* Delete for me */}
+      <TouchableOpacity
+        onPress={() => {
+          if (selectedMessage) {
+            handleDeleteForMe(selectedMessage.id);
+          }
+
+          setOptionsVisible(false);
+          setSelectedMessage(null);
+        }}
+        style={{
+          paddingVertical: 16,
+          paddingHorizontal: 25,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 17,
+            color: "#ff4f6d",
+          }}
+        >
+          Delete for me
+        </Text>
+      </TouchableOpacity>
+
+      {/* Delete for everyone - only my message */}
+      {selectedMessage &&
+        selectedMessage.senderId === currentUserId && (
+          <TouchableOpacity
+            onPress={() => {
+              handleDeleteForEveryone(selectedMessage.id);
+
+              setOptionsVisible(false);
+              setSelectedMessage(null);
+            }}
+            style={{
+              paddingVertical: 16,
+              paddingHorizontal: 25,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 17,
+                color: "#ff4f6d",
+              }}
+            >
+              Delete for everyone
+            </Text>
+          </TouchableOpacity>
+        )}
+
+      {/* Cancel */}
+      <TouchableOpacity
+        onPress={() => {
+          setOptionsVisible(false);
+          setSelectedMessage(null);
+        }}
+        style={{
+          paddingVertical: 16,
+          paddingHorizontal: 25,
+          borderTopWidth: 1,
+          borderTopColor: "#eee",
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 17,
+            fontWeight: "bold",
+            color: "#777",
+          }}
+        >
+          Cancel
+        </Text>
+      </TouchableOpacity>
+    </Pressable>
+  </Pressable>
+</Modal>
+
   </KeyboardAvoidingView>
+
 );
 }

@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { File } from "expo-file-system";
 import { db, auth } from "../firebase";
 import { collection, addDoc, Timestamp, doc, getDoc,} from "firebase/firestore";
 export default function CreateStory({ navigation }) {
@@ -25,13 +26,12 @@ export default function CreateStory({ navigation }) {
   };
 
   const uploadToCloudinary = async (imageUri) => {
+
     const data = new FormData();
 
-    data.append("file", {
-      uri: imageUri,
-      type: "image/jpeg",
-      name: "story.jpg",
-    });
+    const file = new File(imageUri);
+
+    data.append("file", file);
 
     data.append("upload_preset", "moments_upload");
 
@@ -58,10 +58,19 @@ export default function CreateStory({ navigation }) {
 
       console.log("Saving story...");
 
-      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
-      const userData = userDoc.data();
+console.log("Checking user document...");
 
-     await addDoc(collection(db, "stories"), {
+const userDoc = await getDoc(
+  doc(db, "users", auth.currentUser.uid)
+);
+
+console.log("User document read successfully.");
+
+const userData = userDoc.data();
+
+console.log("Creating story document...");
+
+await addDoc(collection(db, "stories"), {
      imageUrl: imageUrl,
       uid: auth.currentUser.uid,
       name: userData.name,

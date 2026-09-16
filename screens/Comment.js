@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { db, auth } from "../firebase";
-import { SafeAreaView, View, Text, TextInput, TouchableOpacity} from "react-native";
+import { View, Text, TextInput, TouchableOpacity} from "react-native";
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot} from "firebase/firestore";
 import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Comment({ route }) {
   const { postId } = route.params;

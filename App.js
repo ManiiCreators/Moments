@@ -10,6 +10,7 @@ import CreateImpact from "./screens/CreateImpact";
 import RaiseYourVoice from "./screens/RaiseYourVoice";
 import RaiseQuestion from "./screens/RaiseQuestion";
 import Profile from "./screens/Profile";
+import EditProfile from "./screens/EditProfile";
 import React, { useEffect, useState } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -25,6 +26,7 @@ import Messages from "./screens/Messages";
 import Chat from "./screens/Chat";
 import Notifications from "./screens/Notifications";
 import SavedMoments from "./screens/SavedMoments";
+import MyMoments from "./screens/MyMoments";
 import Followers from "./screens/Followers";
 import Following from "./screens/Following";
 import MainTabs from "./navigation/MainTabs";
@@ -59,9 +61,11 @@ if (loading) {
       <Stack.Screen name="RaiseQuestion" component={RaiseQuestion}/>
       <Stack.Screen name="CreatePost" component={CreatePost} />
       <Stack.Screen name="SavedMoments" component={SavedMoments} />
+      <Stack.Screen name="MyMoments" component={MyMoments} />
       <Stack.Screen name="Comment" component={Comment} />
       <Stack.Screen name="Search" component={Search} />
       <Stack.Screen name="UserProfile" component={UserProfile}/>
+      <Stack.Screen name="EditProfile" component={EditProfile} />
       <Stack.Screen name="Followers" component={Followers} />
       <Stack.Screen name="Following" component={Following} />
       <Stack.Screen name="Stories" component={Stories} />

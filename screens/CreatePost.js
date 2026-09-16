@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TextInput,
@@ -11,6 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { db, auth } from "../firebase";
 
@@ -22,9 +22,11 @@ import {
   Timestamp,
 } from "firebase/firestore";
 
+
 import * as ImagePicker from "expo-image-picker";
 
 import { Ionicons } from "@expo/vector-icons";
+import { File } from "expo-file-system";
 
 export default function CreatePost({ navigation }) {
 
@@ -37,7 +39,7 @@ export default function CreatePost({ navigation }) {
   // ================================
 
   const pickImage = async () => {
-
+  try {
     const permission =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -51,16 +53,31 @@ export default function CreatePost({ navigation }) {
 
     const result =
       await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
       });
 
     if (!result.canceled) {
-      setImageUrl(result.assets[0].uri);
+      const asset = result.assets[0];
+
+      setImageUrl({
+        uri: asset.uri,
+        type: asset.mimeType || "image/jpeg",
+        name: asset.fileName || "photo.jpg",
+      });
     }
-  };
+
+  } catch (error) {
+    console.log("IMAGE PICK ERROR:", error);
+
+    Alert.alert(
+      "Image Error",
+      "Unable to select the image."
+    );
+  }
+};
 
 
   // ================================
@@ -68,16 +85,16 @@ export default function CreatePost({ navigation }) {
   // ================================
 
   const uploadToCloudinary = async (imageUri) => {
+  try {
+    console.log("Uploading image URI:", imageUri);
 
-    const data = new FormData();
+    const file = new File(imageUri);
 
-    data.append("file", {
-      uri: imageUri,
-      type: "image/jpeg",
-      name: "moment.jpg",
-    });
+    const formData = new FormData();
 
-    data.append(
+    formData.append("file", file);
+
+    formData.append(
       "upload_preset",
       "moments_upload"
     );
@@ -86,21 +103,38 @@ export default function CreatePost({ navigation }) {
       "https://api.cloudinary.com/v1_1/kn56xivr/image/upload",
       {
         method: "POST",
-        body: data,
+        body: formData,
       }
     );
 
     const result = await response.json();
 
+    console.log("CLOUDINARY RESPONSE:", result);
+
     if (!response.ok) {
       throw new Error(
-        result.error?.message ||
+        result?.error?.message ||
         "Image upload failed."
       );
     }
 
+    if (!result.secure_url) {
+      throw new Error(
+        "Cloudinary did not return an image URL."
+      );
+    }
+
     return result.secure_url;
-  };
+
+  } catch (error) {
+    console.log(
+      "CLOUDINARY UPLOAD ERROR:",
+      error
+    );
+
+    throw error;
+  }
+};
 
 
   // ================================
@@ -349,8 +383,8 @@ export default function CreatePost({ navigation }) {
             <View style={styles.previewContainer}>
 
               <Image
-                source={{ uri: imageUrl }}
-                style={styles.previewImage}
+              source={{ uri: imageUrl.uri }}
+              style={styles.previewImage}
               />
 
               <TouchableOpacity

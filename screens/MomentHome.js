@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, FlatList, Image, RefreshControl,Share, Alert, } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, RefreshControl, Share, Alert } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { auth, db } from "../firebase";
 import {
@@ -34,6 +37,12 @@ useEffect(() => {
   loadReports();
   loadStories();
 }, []);
+
+useFocusEffect(
+  React.useCallback(() => {
+    loadStories();
+  }, [])
+);
 
 const loadReports = async () => {
   try {

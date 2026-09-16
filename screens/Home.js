@@ -1,6 +1,5 @@
 import React, { useRef } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   Image,
   StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useScrollToTop } from "@react-navigation/native";
 
 export default function Home({ navigation }) {
@@ -414,13 +414,12 @@ const styles = StyleSheet.create({
 /* ================= PREMIUM HEADER ================= */
 
 topHeader: {
-  height: 88,
+  height: 76,
   backgroundColor: "#ffffff",
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
   paddingHorizontal: 18,
-  paddingTop: 8,
   borderBottomWidth: 1,
   borderBottomColor: "#f1f1f1",
 },
@@ -499,7 +498,7 @@ notificationDot: {
 greetingRow: {
   backgroundColor: "#ffffff",
   paddingHorizontal: 18,
-  paddingVertical: 18,
+  paddingVertical: 14,
   flexDirection: "row",
   alignItems: "center",
 },
