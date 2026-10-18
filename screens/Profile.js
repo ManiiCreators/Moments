@@ -1036,6 +1036,16 @@ const loadMyImpact = async () => {
             }
           />
 
+          
+        <MenuItem
+        icon="people-outline"
+        title="Joined Initiatives"
+        subtitle="Initiatives you're participating in"
+        onPress={() => navigation.navigate("JoinedInitiatives")}
+       />
+
+
+
           <View
             style={styles.menuDivider}
           />

@@ -125,10 +125,11 @@ export default function MyInitiatives({ navigation }) {
       <TouchableOpacity
         activeOpacity={0.9}
         style={styles.card}
-        onPress={() => {
-          // Initiative Details will be connected later
-          console.log("INITIATIVE:", item.id);
-        }}
+       onPress={() => {
+       navigation.navigate("InitiativeDetails", {
+       initiative: item,
+       });
+       }}
       >
 
         {/* ================================================= */}

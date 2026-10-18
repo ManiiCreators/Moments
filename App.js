@@ -29,6 +29,8 @@ import Notifications from "./screens/Notifications";
 import SavedMoments from "./screens/SavedMoments";
 import MyMoments from "./screens/MyMoments";
 import MyInitiatives from "./screens/MyInitiatives";
+import JoinedInitiatives from "./screens/JoinedInitiatives";
+import InitiativeDetails from "./screens/InitiativeDetails";
 import MyImpacts from "./screens/MyImpacts";
 import PeopleHelped from "./screens/PeopleHelped";
 import EditImpact from "./screens/EditImpact";
@@ -76,6 +78,8 @@ if (loading) {
       <Stack.Screen name="UserProfile" component={UserProfile}/>
       <Stack.Screen name="EditProfile" component={EditProfile} />
       <Stack.Screen name="MyInitiatives" component={MyInitiatives} />
+      <Stack.Screen name="JoinedInitiatives" component={JoinedInitiatives} />
+      <Stack.Screen name="InitiativeDetails" component={InitiativeDetails} />
       <Stack.Screen name="MyImpacts" component={MyImpacts} />
       <Stack.Screen name="EditImpact" component={EditImpact} />
       <Stack.Screen name="PeopleHelped" component={PeopleHelped} />

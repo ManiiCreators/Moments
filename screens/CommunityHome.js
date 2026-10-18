@@ -8,8 +8,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function CommunityHome() {
-  return (
+export default function CommunityHome({ navigation }) {
+    return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -83,6 +83,27 @@ export default function CommunityHome() {
     <Text style={styles.buttonText}>Explore →</Text>
     </TouchableOpacity>
    </View>
+
+   
+        {/* Joined Initiatives */}
+        <View style={styles.card}>
+          <Text style={styles.icon}>🤝</Text>
+
+          <Text style={styles.cardTitle}>Joined Initiatives</Text>
+
+          <Text style={styles.cardText}>
+            View the community initiatives you're participating in
+            and follow your contribution to making a difference.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate("JoinedInitiatives")}
+          >
+            <Text style={styles.buttonText}>View Initiatives →</Text>
+          </TouchableOpacity>
+        </View>
+
 
       </ScrollView>
     </SafeAreaView>
