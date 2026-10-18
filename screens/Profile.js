@@ -36,12 +36,20 @@ const [bio, setBio] = useState(
   "Creating moments that make a difference. 🚀"
 );
 
-const [location, setLocation] = useState(
+  const [location, setLocation] = useState(
   "Kakinada, India"
-);
+  );
   const [profileImage, setProfileImage] = useState(null);
 
   const [myMoments, setMyMoments] = useState([]);
+
+  const [momentsCount, setMomentsCount] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+
+  const [impactCount, setImpactCount] = useState(0);
+  const [peopleHelpedCount, setPeopleHelpedCount] = useState(0);
+  const [initiativeCount, setInitiativeCount] = useState(0);
 
   const defaultCover =
     "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=90";
@@ -129,6 +137,7 @@ useFocusEffect(
   useCallback(() => {
     loadProfile();
     loadMyMoments();
+    loadMyImpact();
   }, [])
 );
 
@@ -136,20 +145,18 @@ const loadProfile = async () => {
   try {
     if (!auth.currentUser) return;
 
-    const docRef = doc(
+    const userRef = doc(
       db,
       "users",
       auth.currentUser.uid
     );
 
-    const docSnap = await getDoc(docRef);
+    const userSnap = await getDoc(userRef);
 
-    if (docSnap.exists()) {
-      const data = docSnap.data();
+    if (userSnap.exists()) {
+      const data = userSnap.data();
 
-      setName(
-        data.name || "Mani"
-      );
+      setName(data.name || "Mani");
 
       setUsername(
         data.username || "@moments.creator"
@@ -171,6 +178,51 @@ const loadProfile = async () => {
       setCoverImage(
         data.coverURL ||
           "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1200&q=80"
+      );
+
+      // ================= PROFILE STATUS =================
+
+      const followers =
+        Array.isArray(data.followers)
+          ? data.followers.length
+          : 0;
+
+      const following =
+        Array.isArray(data.following)
+          ? data.following.length
+          : 0;
+
+      setFollowersCount(followers);
+      setFollowingCount(following);
+
+      // ================= INITIATIVES COUNT =================
+
+const currentUser = auth.currentUser;
+
+if (currentUser) {
+  const initiativeQuery = query(
+    collection(db, "initiatives"),
+    where("userId", "==", currentUser.uid)
+  );
+
+  const initiativeSnapshot = await getDocs(initiativeQuery);
+
+  setInitiativeCount(initiativeSnapshot.size);
+
+  console.log(
+    "MY INITIATIVES:",
+    initiativeSnapshot.size
+  );
+}
+
+      console.log(
+        "FOLLOWERS:",
+        followers
+      );
+
+      console.log(
+        "FOLLOWING:",
+        following
       );
     }
   } catch (error) {
@@ -357,18 +409,95 @@ const loadMyMoments = async () => {
       where("userId", "==", user.uid)
     );
 
-    const querySnapshot = await getDocs(q);
+    const querySnapshot =
+      await getDocs(q);
 
-    const moments = querySnapshot.docs.map((document) => ({
-      id: document.id,
-      ...document.data(),
-    }));
+    const moments =
+      querySnapshot.docs.map(
+        (document) => ({
+          id: document.id,
+          ...document.data(),
+        })
+      );
 
     setMyMoments(moments);
 
-    console.log("MY MOMENTS:", moments);
+    // ================= MOMENTS COUNT =================
+
+    setMomentsCount(
+      querySnapshot.size
+    );
+
+    console.log(
+      "MY MOMENTS:",
+      moments.length
+    );
+
   } catch (error) {
-    console.log("LOAD MY MOMENTS ERROR:", error);
+    console.log(
+      "LOAD MY MOMENTS ERROR:",
+      error
+    );
+  }
+};
+
+
+/* ================= LOAD MY IMPACT ================= */
+
+const loadMyImpact = async () => {
+  try {
+    const user = auth.currentUser;
+
+    if (!user) return;
+
+    const q = query(
+      collection(db, "impacts"),
+      where("userId", "==", user.uid)
+    );
+
+    const querySnapshot =
+      await getDocs(q);
+
+    let totalPeopleHelped = 0;
+
+    querySnapshot.docs.forEach(
+      (document) => {
+        const data = document.data();
+
+        const helped =
+          Number(data.peopleHelped) || 0;
+
+        totalPeopleHelped += helped;
+      }
+    );
+
+    // ================= IMPACT COUNT =================
+
+    setImpactCount(
+      querySnapshot.size
+    );
+
+    // ================= PEOPLE HELPED =================
+
+    setPeopleHelpedCount(
+      totalPeopleHelped
+    );
+
+    console.log(
+      "MY IMPACTS:",
+      querySnapshot.size
+    );
+
+    console.log(
+      "PEOPLE HELPED:",
+      totalPeopleHelped
+    );
+
+  } catch (error) {
+    console.log(
+      "LOAD MY IMPACT ERROR:",
+      error
+    );
   }
 };
 
@@ -618,84 +747,83 @@ const loadMyMoments = async () => {
           </View>
         </View>
 
-        {/* ================= STATS ================= */}
+       {/* ================= STATS ================= */}
 
-        <View style={styles.statsCard}>
-          <TouchableOpacity
-            style={styles.statItem}
-          >
-            <Ionicons
-              name="bookmark"
-              size={23}
-              color="#E91E63"
-            />
+<View style={styles.statsCard}>
 
-            <Text
-              style={styles.statNumber}
-            >
-              24
-            </Text>
+  {/* MOMENTS */}
+  <TouchableOpacity
+    style={styles.statItem}
+    activeOpacity={0.7}
+    onPress={() =>
+      navigation.navigate("MyMoments", {
+        moments: myMoments,
+        selectedIndex: 0,
+      })
+    }
+  >
+    <Ionicons
+      name="bookmark"
+      size={23}
+      color="#E91E63"
+    />
 
-            <Text
-              style={styles.statLabel}
-            >
-              Moments
-            </Text>
-          </TouchableOpacity>
+    <Text style={styles.statNumber}>
+      {momentsCount}
+    </Text>
 
-          <View
-            style={styles.statDivider}
-          />
+    <Text style={styles.statLabel}>
+      Moments
+    </Text>
+  </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.statItem}
-          >
-            <Ionicons
-              name="people"
-              size={24}
-              color="#1976B9"
-            />
+  <View style={styles.statDivider} />
 
-            <Text
-              style={styles.statNumber}
-            >
-              156
-            </Text>
+  {/* FOLLOWERS */}
+  <TouchableOpacity
+    style={styles.statItem}
+    activeOpacity={0.7}
+    onPress={() => navigation.navigate("Followers")}
+  >
+    <Ionicons
+      name="people"
+      size={24}
+      color="#1976B9"
+    />
 
-            <Text
-              style={styles.statLabel}
-            >
-              Followers
-            </Text>
-          </TouchableOpacity>
+    <Text style={styles.statNumber}>
+      {followersCount}
+    </Text>
 
-          <View
-            style={styles.statDivider}
-          />
+    <Text style={styles.statLabel}>
+      Followers
+    </Text>
+  </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.statItem}
-          >
-            <Ionicons
-              name="person-add"
-              size={24}
-              color="#1976B9"
-            />
+  <View style={styles.statDivider} />
 
-            <Text
-              style={styles.statNumber}
-            >
-              120
-            </Text>
+  {/* FOLLOWING */}
+  <TouchableOpacity
+    style={styles.statItem}
+    activeOpacity={0.7}
+    onPress={() => navigation.navigate("Following")}
+  >
+    <Ionicons
+      name="person-add"
+      size={24}
+      color="#1976B9"
+    />
 
-            <Text
-              style={styles.statLabel}
-            >
-              Following
-            </Text>
-          </TouchableOpacity>
-        </View>
+    <Text style={styles.statNumber}>
+      {followingCount}
+    </Text>
 
+    <Text style={styles.statLabel}>
+      Following
+    </Text>
+  </TouchableOpacity>
+
+</View>
         {/* ================= YOUR IMPACT ================= */}
 
         <View style={styles.impactCard}>
@@ -738,9 +866,11 @@ const loadMyMoments = async () => {
           <View
             style={styles.impactStats}
           >
-            <View
-              style={styles.impactStat}
-            >
+            <TouchableOpacity
+            style={styles.impactStat}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate("MyImpacts")}
+          >
               <View
                 style={styles.heartCircle}
               >
@@ -753,13 +883,9 @@ const loadMyMoments = async () => {
                 </Text>
               </View>
 
-              <Text
-                style={
-                  styles.impactNumber
-                }
-              >
-                12
-              </Text>
+              <Text style={styles.impactNumber}>
+             {impactCount}
+             </Text>
 
               <Text
                 style={
@@ -768,11 +894,13 @@ const loadMyMoments = async () => {
               >
                 Impacts
               </Text>
-            </View>
+            </TouchableOpacity>
 
-            <View
-              style={styles.impactStat}
-            >
+            <TouchableOpacity
+           style={styles.impactStat}
+           activeOpacity={0.7}
+           onPress={() => navigation.navigate("PeopleHelped")}
+           >
               <View
                 style={styles.peopleCircle}
               >
@@ -783,12 +911,8 @@ const loadMyMoments = async () => {
                 />
               </View>
 
-              <Text
-                style={
-                  styles.impactNumber
-                }
-              >
-                48
+              <Text style={styles.impactNumber}>
+              {peopleHelpedCount}
               </Text>
 
               <Text
@@ -798,10 +922,12 @@ const loadMyMoments = async () => {
               >
                 People Helped
               </Text>
-            </View>
+            </TouchableOpacity>
 
-            <View
-              style={styles.impactStat}
+            <TouchableOpacity
+            style={styles.impactStat}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate("MyInitiatives")}
             >
               <View
                 style={styles.leafCircle}
@@ -814,12 +940,12 @@ const loadMyMoments = async () => {
               </View>
 
               <Text
-                style={
-                  styles.impactNumber
-                }
-              >
-                5
-              </Text>
+             style={
+             styles.impactNumber
+            }
+            >
+            {initiativeCount}
+            </Text>
 
               <Text
                 style={
@@ -828,7 +954,7 @@ const loadMyMoments = async () => {
               >
                 Initiatives
               </Text>
-            </View>
+           </TouchableOpacity>
           </View>
         </View>
 

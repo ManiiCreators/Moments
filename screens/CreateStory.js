@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import { db, auth } from "../firebase";
 import { collection, addDoc, Timestamp, doc, getDoc,} from "firebase/firestore";
 export default function CreateStory({ navigation }) {
   const [image, setImage] = useState(null);
+
+  const [uploading, setUploading] = useState(false);
+const uploadingRef = useRef(false);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -48,12 +51,21 @@ export default function CreateStory({ navigation }) {
   };
 
   const postStory = async () => {
-    if (!image) {
-      alert("Please select an image");
-      return;
-    }
+  if (uploadingRef.current) {
+    return;
+  }
 
-    try {
+  uploadingRef.current = true;
+  setUploading(true);
+
+  if (!image) {
+    uploadingRef.current = false;
+    setUploading(false);
+    alert("Please select an image");
+    return;
+  }
+
+  try {
       const imageUrl = await uploadToCloudinary(image);
 
       console.log("Saving story...");
@@ -86,9 +98,12 @@ await addDoc(collection(db, "stories"), {
      navigation.navigate("Home");
     }
     } catch (error) {
-        console.log(error);
-      alert(error.message);
-    }
+  console.log(error);
+  alert(error.message);
+} finally {
+  uploadingRef.current = false;
+  setUploading(false);
+}
   };
 
   return (
@@ -103,9 +118,18 @@ await addDoc(collection(db, "stories"), {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={postStory}>
-        <Text style={styles.buttonText}>Upload Story</Text>
-      </TouchableOpacity>
+      <TouchableOpacity
+  style={[
+    styles.button,
+    uploading && { opacity: 0.6 },
+  ]}
+  onPress={postStory}
+  disabled={uploading}
+>
+  <Text style={styles.buttonText}>
+    {uploading ? "Uploading..." : "Upload Story"}
+  </Text>
+</TouchableOpacity>
     </View>
   );
 }

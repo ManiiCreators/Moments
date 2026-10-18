@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,44 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useScrollToTop } from "@react-navigation/native";
+import { db } from "../firebase";
+
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+} from "firebase/firestore";
 
 export default function Home({ navigation }) {
     const scrollViewRef = useRef(null);
+    const [aroundImpacts, setAroundImpacts] = useState([]);
+
+    useEffect(() => {
+  const loadAroundImpacts = async () => {
+    try {
+      const q = query(
+        collection(db, "impacts"),
+        orderBy("createdAt", "desc"),
+        limit(10)
+      );
+
+      const snapshot = await getDocs(q);
+
+      const impacts = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setAroundImpacts(impacts);
+    } catch (error) {
+      console.log("Error loading Around You impacts:", error);
+    }
+  };
+
+  loadAroundImpacts();
+}, []);
 
 useScrollToTop(scrollViewRef);
   return (
@@ -270,33 +305,15 @@ useScrollToTop(scrollViewRef);
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.aroundScroll}
         >
-          <AroundCard
-            image="https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?auto=format&fit=crop&w=500&q=80"
-            title="Youth cleaned the beach"
-            location="RK Beach"
-            time="2h ago"
-          />
-
-          <AroundCard
-            image="https://images.unsplash.com/photo-1559234938-b60fff04894d?auto=format&fit=crop&w=500&q=80"
-            title="Helped an elderly person"
-            location="MVP Colony"
-            time="3h ago"
-          />
-
-          <AroundCard
-            image="https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=500&q=80"
-            title="Donated books to children"
-            location="Kakinada"
-            time="5h ago"
-          />
-
-          <AroundCard
-            image="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=500&q=80"
-            title="Tree plantation drive"
-            location="Gandhi Park"
-            time="6h ago"
-          />
+         {aroundImpacts.map((impact) => (
+  <AroundCard
+    key={impact.id}
+    image={impact.imageUrl}
+    title={impact.action || "Impact created"}
+    location={impact.location || "Nearby"}
+    time={getTimeAgo(impact.createdAt)}
+  />
+))}
         </ScrollView>
 
         {/* ================= IMPACT HAPPENING NOW ================= */}
@@ -364,6 +381,43 @@ useScrollToTop(scrollViewRef);
 }
 
 /* ================= AROUND CARD ================= */
+
+const getTimeAgo = (timestamp) => {
+  if (!timestamp) return "Recently";
+
+  try {
+    const date = timestamp.toDate
+      ? timestamp.toDate()
+      : new Date(timestamp);
+
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMinutes < 1) return "Just now";
+    if (diffMinutes < 60) return `${diffMinutes} min ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+      return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 30) {
+  return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
+}
+
+const diffMonths = Math.floor(diffDays / 30);
+
+if (diffMonths < 12) {
+  return `${diffMonths} ${diffMonths === 1 ? "month" : "months"} ago`;
+}
+
+return date.toLocaleDateString();
+  } catch (error) {
+    return "Recently";
+  }
+};
 
 function AroundCard({ image, title, location, time }) {
   return (

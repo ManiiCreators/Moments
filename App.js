@@ -7,6 +7,7 @@ import Home from "./screens/Home";
 import MomentHome from "./screens/MomentHome";
 import CreatePost from "./screens/CreatePost";
 import CreateImpact from "./screens/CreateImpact";
+import CreateInitiative from "./screens/CreateInitiative";
 import RaiseYourVoice from "./screens/RaiseYourVoice";
 import RaiseQuestion from "./screens/RaiseQuestion";
 import Profile from "./screens/Profile";
@@ -27,8 +28,15 @@ import Chat from "./screens/Chat";
 import Notifications from "./screens/Notifications";
 import SavedMoments from "./screens/SavedMoments";
 import MyMoments from "./screens/MyMoments";
+import MyInitiatives from "./screens/MyInitiatives";
+import MyImpacts from "./screens/MyImpacts";
+import PeopleHelped from "./screens/PeopleHelped";
+import EditImpact from "./screens/EditImpact";
 import Followers from "./screens/Followers";
 import Following from "./screens/Following";
+import ImpactDetails from "./screens/ImpactDetails";
+import ImpactComments from "./screens/ImpactComments";
+import EditMoment from "./screens/EditMoment";
 import MainTabs from "./navigation/MainTabs";
 
 
@@ -57,6 +65,7 @@ if (loading) {
   <>
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="CreateImpact" component={CreateImpact} />
+      <Stack.Screen name="CreateInitiative" component={CreateInitiative}/>
       <Stack.Screen name="RaiseYourVoice" component={RaiseYourVoice}/>
       <Stack.Screen name="RaiseQuestion" component={RaiseQuestion}/>
       <Stack.Screen name="CreatePost" component={CreatePost} />
@@ -66,8 +75,15 @@ if (loading) {
       <Stack.Screen name="Search" component={Search} />
       <Stack.Screen name="UserProfile" component={UserProfile}/>
       <Stack.Screen name="EditProfile" component={EditProfile} />
+      <Stack.Screen name="MyInitiatives" component={MyInitiatives} />
+      <Stack.Screen name="MyImpacts" component={MyImpacts} />
+      <Stack.Screen name="EditImpact" component={EditImpact} />
+      <Stack.Screen name="PeopleHelped" component={PeopleHelped} />
       <Stack.Screen name="Followers" component={Followers} />
       <Stack.Screen name="Following" component={Following} />
+      <Stack.Screen name="ImpactDetails" component={ImpactDetails} />
+      <Stack.Screen name="ImpactComments" component={ImpactComments} />
+      <Stack.Screen name="EditMoment" component={EditMoment} />
       <Stack.Screen name="Stories" component={Stories} />
       <Stack.Screen name="CreateStory" component={CreateStory}/>
       <Stack.Screen name="StoryViews" component={StoryViews}/>

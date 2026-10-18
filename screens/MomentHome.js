@@ -731,34 +731,22 @@ contentContainerStyle={{
         </Text>
       </TouchableOpacity>
 
-      {item.userId === auth.currentUser?.uid && (
+      {/* EDIT - OWNER ONLY */}
+{item.userId === auth.currentUser?.uid && (
   <TouchableOpacity
     style={styles.menuItem}
     onPress={() => {
-      Alert.alert(
-        "Delete Moment",
-        "Are you sure you want to delete this Moment?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: async () => {
-              setActiveMenu(null);
-              await deletePost(item.id);
-            },
-          },
-        ]
-      );
+      setActiveMenu(null);
+
+      navigation.navigate("EditMoment", {
+        postId: item.id,
+      });
     }}
   >
-    <Text style={styles.menuIcon}>🗑️</Text>
+    <Text style={styles.menuIcon}>✏️</Text>
 
-    <Text style={[styles.menuText, { color: "#C62828" }]}>
-      Delete
+    <Text style={styles.menuText}>
+      Edit
     </Text>
   </TouchableOpacity>
 )}

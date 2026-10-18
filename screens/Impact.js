@@ -1,10 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+
+import { useFocusEffect } from "@react-navigation/native";
 
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   Image,
   RefreshControl,
@@ -29,16 +36,98 @@ import {
   arrayRemove,
   increment,
   getDocs,
+  getDoc,
   setDoc,
 } from "firebase/firestore";
 
 
 export default function Impact({ navigation }) {
 
-  const [impacts, setImpacts] = useState([]);
-  const [savedImpacts, setSavedImpacts] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+
+const [impacts, setImpacts] = useState([]);
+const [savedImpacts, setSavedImpacts] = useState({});
+const [loading, setLoading] = useState(true);
+
+// Refresh saved bookmarks whenever the Impact screen is opened
+useFocusEffect(
+  useCallback(() => {
+    let active = true;
+
+    const loadSavedStatus = async () => {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        setSavedImpacts({});
+        return;
+      }
+
+      try {
+        const snapshot = await getDocs(
+          collection(db, "impacts")
+        );
+
+        const savedStatus = {};
+
+        await Promise.all(
+          snapshot.docs.map(async (impactDoc) => {
+            const saveRef = doc(
+              db,
+              "impacts",
+              impactDoc.id,
+              "saves",
+              currentUser.uid
+            );
+
+            const saveSnapshot = await getDoc(saveRef);
+
+            if (saveSnapshot.exists()) {
+              savedStatus[impactDoc.id] = true;
+            }
+          })
+        );
+
+        if (active) {
+          setSavedImpacts(savedStatus);
+        }
+      } catch (error) {
+        console.log(
+          "LOAD SAVED IMPACT STATUS ERROR:",
+          error
+        );
+      }
+    };
+
+    loadSavedStatus();
+
+    return () => {
+      active = false;
+    };
+  }, [])
+);
+
+const [refreshing, setRefreshing] = useState(false);
+const [selectedCategory, setSelectedCategory] = useState("All");
+
+
+const filteredImpacts =
+  selectedCategory === "All"
+    ? impacts
+    : impacts.filter(
+        (impact) => impact.category === selectedCategory
+      );
+
+  
+const totalPeopleHelped = impacts.reduce((total, impact) => {
+  return total + (parseInt(impact.peopleHelped, 10) || 0);
+}, 0);
+
+const totalActions = impacts.length;
+
+const totalCities = new Set(
+  impacts
+    .map((impact) => (impact.location || "").trim().toLowerCase())
+    .filter(Boolean)
+).size;
 
 
   // ==========================================
@@ -466,16 +555,16 @@ const toggleLike = async (impact) => {
             PHOTO
         =============================== */}
 
-        {item.imageUrl ? (
-
-          <Image
-            source={{
-              uri: item.imageUrl,
-            }}
-            style={styles.impactImage}
-          />
-
-        ) : null}
+       
+      {typeof item.imageUrl === "string" &&
+      item.imageUrl.trim().length > 0 ? (
+      <Image
+      source={{
+      uri: item.imageUrl.trim(),
+      }}
+      style={styles.impactImage}
+      />
+      ) : null}
 
 
         {/* ===============================
@@ -790,48 +879,273 @@ const toggleSave = async (impact) => {
 
       <View style={styles.header}>
 
-        <View>
+  <View style={styles.headerLeft}>
 
-          <Text style={styles.headerTitle}>
-            Impact
-          </Text>
+    <Text style={styles.headerTitle}>
+      Impact 🌱
+    </Text>
 
-          <Text style={styles.headerSubtitle}>
-            Small actions. Big difference. 🌱
-          </Text>
+    <Text style={styles.headerSubtitle}>
+      Small actions. Big difference. ✨
+    </Text>
 
-        </View>
+  </View>
+
+  <View style={styles.headerActions}>
+
+    <TouchableOpacity
+      style={styles.searchButton}
+      onPress={() => {}}
+      activeOpacity={0.7}
+    >
+      <Ionicons
+        name="search-outline"
+        size={23}
+        color="#2C241F"
+      />
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={styles.addButton}
+      onPress={() =>
+        navigation.navigate("CreateImpact")
+      }
+      activeOpacity={0.8}
+    >
+      <Ionicons
+        name="add"
+        size={27}
+        color="#FFFFFF"
+      />
+    </TouchableOpacity>
+
+  </View>
+
+</View>
 
 
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() =>
-            navigation.navigate(
-              "CreateImpact"
-            )
-          }
-        >
-
-          <Ionicons
-            name="add"
-            size={25}
-            color="#FFFFFF"
-          />
-
-        </TouchableOpacity>
-
-      </View>
 
 
       {/* ================= FEED ================= */}
 
       <FlatList
-        data={impacts}
-        keyExtractor={(item) =>
-          item.id
-        }
-        renderItem={renderImpact}
+        
+      data={filteredImpacts}
+      keyExtractor={(item) => item.id}
+      renderItem={renderImpact}
+
         ListEmptyComponent={renderEmpty}
+
+       ListHeaderComponent={
+  <>
+    <View style={styles.heroCard}>
+
+      <View style={styles.heroTop}>
+
+        <View style={styles.heroIconCircle}>
+          <Ionicons
+            name="leaf-outline"
+            size={28}
+            color="#5F7D68"
+          />
+        </View>
+
+        <View style={styles.heroTextContainer}>
+
+          <Text style={styles.heroEyebrow}>
+            MAKE A DIFFERENCE
+          </Text>
+
+          <Text style={styles.heroTitle}>
+            Together for a{"\n"}
+            Better Tomorrow
+          </Text>
+
+          <Text style={styles.heroSubtitle}>
+            Small actions create big changes.
+            Be the reason someone smiles today.
+          </Text>
+
+        </View>
+
+      </View>
+
+      <TouchableOpacity
+        style={styles.heroButton}
+        onPress={() =>
+          navigation.navigate("CreateImpact")
+        }
+        activeOpacity={0.85}
+      >
+        <Text style={styles.heroButtonText}>
+          Create Impact
+        </Text>
+
+        <Ionicons
+          name="arrow-forward"
+          size={18}
+          color="#FFFFFF"
+        />
+      
+      </TouchableOpacity>
+
+    </View>
+
+    {/* IMPACT STATISTICS */}
+    <View style={styles.impactStatsCard}>
+      <View style={styles.impactStat}>
+        <Ionicons name="people-outline" size={21} color="#5F7D68" />
+        <Text style={styles.impactStatNumber}>{totalPeopleHelped}</Text>
+        <Text style={styles.impactStatLabel}>People Helped</Text>
+      </View>
+
+      <View style={styles.impactStatDivider} />
+
+      <View style={styles.impactStat}>
+        <Ionicons name="heart-outline" size={21} color="#E83263" />
+        <Text style={styles.impactStatNumber}>{totalActions}</Text>
+        <Text style={styles.impactStatLabel}>Positive Actions</Text>
+      </View>
+
+      <View style={styles.impactStatDivider} />
+
+      <View style={styles.impactStat}>
+        <Ionicons name="location-outline" size={21} color="#A17B4A" />
+        <Text style={styles.impactStatNumber}>{totalCities}</Text>
+        <Text style={styles.impactStatLabel}>Locations</Text>
+      </View>
+    </View>
+
+    
+
+
+     {/* ================= CREATE ACTIONS ================= */}
+
+     <View style={styles.createActions}>
+
+  {/* CREATE IMPACT */}
+
+  <TouchableOpacity
+    style={[
+      styles.createActionCard,
+      styles.impactActionCard,
+    ]}
+    onPress={() =>
+      navigation.navigate("CreateImpact")
+    }
+    activeOpacity={0.85}
+  >
+
+    <View style={styles.createActionIconImpact}>
+      <Ionicons
+        name="heart"
+        size={22}
+        color="#E83263"
+      />
+    </View>
+
+    <View style={styles.createActionContent}>
+      <Text style={styles.createActionTitle}>
+        Create an Impact
+      </Text>
+
+      <Text style={styles.createActionSubtitle}>
+        Share a good action you did today.
+      </Text>
+    </View>
+
+    <Ionicons
+      name="chevron-forward"
+      size={21}
+      color="#B5AAA2"
+    />
+
+  </TouchableOpacity>
+
+
+  {/* CREATE INITIATIVE */}
+
+  <TouchableOpacity
+    style={[
+      styles.createActionCard,
+      styles.initiativeActionCard,
+    ]}
+    onPress={() =>
+      navigation.navigate("CreateInitiative")
+    }
+    activeOpacity={0.85}
+  >
+
+    <View style={styles.createActionIconInitiative}>
+      <Ionicons
+        name="leaf"
+        size={23}
+        color="#53745C"
+      />
+    </View>
+
+    <View style={styles.createActionContent}>
+      <Text style={styles.createActionTitle}>
+        Start an Initiative
+      </Text>
+
+      <Text style={styles.createActionSubtitle}>
+        Turn an idea into meaningful change.
+      </Text>
+    </View>
+
+    <Ionicons
+      name="chevron-forward"
+      size={21}
+      color="#9AA39B"
+    />
+
+  </TouchableOpacity>
+
+</View>
+
+{/* ================= IMPACT CATEGORY FILTERS ================= */}
+<ScrollView
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  contentContainerStyle={styles.categoryFiltersContainer}
+>
+  {[
+    "All",
+    "Helping Others",
+    "Environment",
+    "Education",
+    "Blood Donation",
+  ].map((category) => {
+    const isSelected = selectedCategory === category;
+
+    return (
+      <TouchableOpacity
+        key={category}
+        style={[
+          styles.categoryFilterChip,
+          isSelected && styles.categoryFilterChipActive,
+        ]}
+        onPress={() => setSelectedCategory(category)}
+        activeOpacity={0.8}
+      >
+        <Text
+          style={[
+            styles.categoryFilterText,
+            isSelected && styles.categoryFilterTextActive,
+          ]}
+        >
+          {category}
+        </Text>
+      </TouchableOpacity>
+    );
+  })}
+</ScrollView>
+
+
+  </>
+  }
+
         showsVerticalScrollIndicator={false}
         contentContainerStyle={
           impacts.length === 0
@@ -878,6 +1192,25 @@ const styles = StyleSheet.create({
     borderBottomColor: "#EEE8E2",
   },
 
+  headerLeft: {
+  flex: 1,
+},
+
+headerActions: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+},
+
+searchButton: {
+  width: 42,
+  height: 42,
+  borderRadius: 21,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "#F8F6F0",
+},
+
   headerTitle: {
     fontSize: 27,
     fontWeight: "800",
@@ -900,59 +1233,150 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
+    // ================= HERO =================
+
+  heroCard: {
+    marginHorizontal: 15,
+    marginTop: 14,
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 26,
+    backgroundColor: "#FFF8F2",
+    borderWidth: 1,
+    borderColor: "#EEDFD2",
+    overflow: "hidden",
+  },
+
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+
+  heroIconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#EAF2EA",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+
+  heroTextContainer: {
+    flex: 1,
+  },
+
+  heroEyebrow: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: "#A17B4A",
+    marginBottom: 7,
+  },
+
+  heroTitle: {
+    fontSize: 25,
+    lineHeight: 31,
+    fontWeight: "800",
+    color: "#2C241F",
+  },
+
+  heroSubtitle: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#756B63",
+    marginTop: 8,
+  },
+
+  heroButton: {
+    marginTop: 18,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#E83263",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    alignSelf: "flex-start",
+    elevation: 2,
+  },
+
+  heroButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+    marginRight: 8,
+  },
 
   // ================= LIST =================
 
   listContent: {
     paddingTop: 10,
-    paddingBottom: 35,
+    paddingBottom: 110,
   },
 
 
   // ================= CARD =================
 
-  card: {
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 15,
-    marginBottom: 14,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "#ECE6E0",
-    padding: 16,
-    overflow: "hidden",
+card: {
+  backgroundColor: "#FFFFFF",
+  marginHorizontal: 15,
+  marginBottom: 16,
+  borderRadius: 24,
+  borderWidth: 1,
+  borderColor: "#EEE6DF",
+  padding: 17,
+  overflow: "hidden",
+  elevation: 1,
+  shadowColor: "#38261C",
+  shadowOffset: {
+    width: 0,
+    height: 2,
   },
+  shadowOpacity: 0.04,
+  shadowRadius: 8,
+},
 
 
   // ================= USER =================
 
-  userRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+ 
+userRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 2,
+},
 
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#F0ECE8",
-  },
+avatar: {
+  width: 54,
+  height: 54,
+  borderRadius: 27,
+  backgroundColor: "#F0ECE8",
+  borderWidth: 2,
+  borderColor: "#F5DCE4",
+},
 
-  userInfo: {
-    flex: 1,
-    marginLeft: 11,
-  },
 
-  userName: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#2C241F",
-  },
+userInfo: {
+  flex: 1,
+  marginLeft: 12,
+  justifyContent: "center",
+},
 
-  time: {
-    fontSize: 11,
-    color: "#968C84",
-    marginTop: 3,
-  },
+
+userName: {
+  fontSize: 16,
+  fontWeight: "800",
+  color: "#2C241F",
+  letterSpacing: -0.3,
+},
+
+time: {
+  fontSize: 12,
+  color: "#91867D",
+  marginTop: 4,
+  fontWeight: "500",
+},
 
   moreButton: {
     width: 38,
@@ -964,38 +1388,48 @@ const styles = StyleSheet.create({
 
   // ================= CATEGORY =================
 
-  categoryBadge: {
-    alignSelf: "flex-start",
-    marginTop: 14,
-    backgroundColor: "#FCE8EE",
-    borderRadius: 15,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-  },
 
-  categoryText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#C92754",
-  },
+
+categoryBadge: {
+  alignSelf: "flex-start",
+  marginTop: 17,
+  marginBottom: 2,
+  backgroundColor: "#FBEAF0",
+  borderRadius: 20,
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+  borderWidth: 1,
+  borderColor: "#F2D5E0",
+},
+
+categoryText: {
+  fontSize: 11,
+  fontWeight: "800",
+  color: "#B92F59",
+  letterSpacing: 0.2,
+},
+
 
 
   // ================= CONTENT =================
 
-  action: {
-    fontSize: 20,
-    lineHeight: 27,
-    fontWeight: "800",
-    color: "#2C241F",
-    marginTop: 12,
-  },
 
-  story: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: "#655C55",
-    marginTop: 7,
-  },
+action: {
+  fontSize: 21,
+  lineHeight: 29,
+  fontWeight: "800",
+  color: "#29231F",
+  marginTop: 12,
+  letterSpacing: -0.4,
+},
+
+story: {
+  fontSize: 14,
+  lineHeight: 22,
+  color: "#70665E",
+  marginTop: 8,
+  letterSpacing: 0.1,
+},
 
 
   // ================= IMAGE =================
@@ -1011,12 +1445,12 @@ const styles = StyleSheet.create({
 
   // ================= DETAILS =================
 
-  detailsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    marginTop: 14,
-  },
+detailsRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  flexWrap: "wrap",
+  marginTop: 16,
+},
 
   detailItem: {
     flexDirection: "row",
@@ -1066,33 +1500,35 @@ const styles = StyleSheet.create({
   },
 
 
-  // ================= STATS =================
+// ================= STATS =================
 
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F0EBE7",
-  },
+statsRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginTop: 16,
+  paddingTop: 14,
+  borderTopWidth: 1,
+  borderTopColor: "#F0E8E2",
+},
 
-  stat: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 22,
-  },
+stat: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 36,
+  marginRight: 24,
+},
 
-  statText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#665C55",
-    marginLeft: 5,
-  },
+statText: {
+  fontSize: 13,
+  fontWeight: "700",
+  color: "#625850",
+  marginLeft: 6,
+},
 
-  statSpacer: {
-    flex: 1,
-  },
+statSpacer: {
+  flex: 1,
+},
 
 
   // ================= EMPTY =================
@@ -1168,5 +1604,142 @@ const styles = StyleSheet.create({
     color: "#81776F",
     marginTop: 10,
   },
+
+  // ================= CREATE ACTIONS =================
+
+createActions: {
+  paddingHorizontal: 15,
+  paddingTop: 12,
+  paddingBottom: 4,
+},
+
+createActionCard: {
+  minHeight: 78,
+  borderRadius: 20,
+  paddingHorizontal: 14,
+  paddingVertical: 12,
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 10,
+  borderWidth: 1,
+},
+
+impactActionCard: {
+  backgroundColor: "#FFF7FA",
+  borderColor: "#F5DCE4",
+},
+
+initiativeActionCard: {
+  backgroundColor: "#F3F8F3",
+  borderColor: "#DCE8DD",
+},
+
+createActionIconImpact: {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+  backgroundColor: "#FCE8EE",
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+createActionIconInitiative: {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+  backgroundColor: "#E4EFE5",
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+createActionContent: {
+  flex: 1,
+  marginLeft: 12,
+  marginRight: 8,
+},
+
+createActionTitle: {
+  fontSize: 15,
+  fontWeight: "800",
+  color: "#2C241F",
+},
+
+createActionSubtitle: {
+  fontSize: 11,
+  lineHeight: 16,
+  color: "#817970",
+  marginTop: 3,
+},
+
+
+impactStatsCard: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-around",
+  marginHorizontal: 15,
+  marginTop: 0,
+  marginBottom: 16,
+  paddingVertical: 17,
+  paddingHorizontal: 5,
+  borderRadius: 22,
+  backgroundColor: "#FFFFFF",
+  borderWidth: 1,
+  borderColor: "#ECE4D9",
+},
+
+impactStat: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+impactStatNumber: {
+  fontSize: 21,
+  fontWeight: "800",
+  color: "#2C241F",
+  marginTop: 6,
+},
+
+impactStatLabel: {
+  fontSize: 10,
+  fontWeight: "600",
+  color: "#81776F",
+  textAlign: "center",
+  marginTop: 4,
+},
+
+
+categoryFiltersContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 15,
+  paddingVertical: 4,
+  gap: 8,
+},
+
+categoryFilterChip: {
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  borderRadius: 22,
+  backgroundColor: "#FFFFFF",
+  borderWidth: 1,
+  borderColor: "#E7DFD7",
+},
+
+categoryFilterChipActive: {
+  backgroundColor: "#E83263",
+  borderColor: "#E83263",
+},
+
+categoryFilterText: {
+  fontSize: 12,
+  fontWeight: "700",
+  color: "#756B63",
+},
+
+categoryFilterTextActive: {
+  color: "#FFFFFF",
+},
+
 
 });

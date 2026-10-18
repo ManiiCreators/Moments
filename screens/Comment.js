@@ -6,7 +6,11 @@ import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Comment({ route }) {
-  const { postId } = route.params;
+ const { postId, impactId, type } = route.params;
+
+const isImpact = type === "impact";
+const parentCollection = isImpact ? "impacts" : "posts";
+const parentId = isImpact ? impactId : postId;
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,14 +25,16 @@ export default function Comment({ route }) {
 }
 
   try {
-    await addDoc(collection(db, "posts", postId, "comments"), {
+    await addDoc(
+  collection(db, parentCollection, parentId, "comments"),
+  {
   text: comment,
   userId: currentUser.uid,
   createdAt: serverTimestamp(),
 });
      
-   const postSnapshot = await getDoc(
-  doc(db, "posts", postId)
+  const postSnapshot = await getDoc(
+  doc(db, parentCollection, parentId)
 );
 
 const postData = postSnapshot.data();
@@ -48,11 +54,13 @@ if (
 
   const commenterName = userData.name || "Someone";
 
+  const contentType = isImpact ? "Impact" : "Moment";
+
   await addDoc(collection(db, "Notification"), {
   userId: postData.userId,
   senderId: currentUser.uid,
   postId: postId,
-  message: commenterName + " commented on your Moment",
+  message: commenterName + " commented on your " + contentType,
   type: "comment",
   commentText: comment,
   isRead: false,
@@ -60,7 +68,7 @@ if (
 });
 }
 
-    await updateDoc(doc(db, "posts", postId), {
+    await updateDoc(doc(db, parentCollection, parentId), {
     comments: increment(1),
     });
 
@@ -74,7 +82,7 @@ if (
 };
 const loadComments = () => {
   const q = query(
-    collection(db, "posts", postId, "comments"),
+    collection(db, parentCollection, parentId, "comments"),
     orderBy("createdAt", "asc")
   );
 
