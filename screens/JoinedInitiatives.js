@@ -138,9 +138,10 @@ export default function JoinedInitiatives({ navigation }) {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          {item.ongoing === false || item.status === "completed"
-            ? "Completed"
-            : "Ongoing"}
+          {item.ongoing === false ||
+          item.status?.toLowerCase() === "completed"
+          ? "Completed"
+          : "Ongoing"}
         </Text>
 
         <Ionicons

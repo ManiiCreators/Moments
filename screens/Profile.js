@@ -51,6 +51,13 @@ const [bio, setBio] = useState(
   const [peopleHelpedCount, setPeopleHelpedCount] = useState(0);
   const [initiativeCount, setInitiativeCount] = useState(0);
 
+  const [joinedInitiativeCount, setJoinedInitiativeCount] = useState(0);
+  const [completedInitiativeCount, setCompletedInitiativeCount] = useState(0);
+  const completionProgress =
+  initiativeCount > 0
+    ? Math.round((completedInitiativeCount / initiativeCount) * 100)
+    : 0;
+
   const defaultCover =
     "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=90";
 
@@ -213,6 +220,47 @@ if (currentUser) {
     "MY INITIATIVES:",
     initiativeSnapshot.size
   );
+
+  // Count completed initiatives created by the current user
+const completedCount = initiativeSnapshot.docs.filter((initiativeDoc) => {
+  const data = initiativeDoc.data();
+
+  return (
+    data.ongoing === false ||
+    data.status?.toLowerCase() === "completed"
+  );
+}).length;
+
+setCompletedInitiativeCount(completedCount);
+
+// Count initiatives joined by the current user
+const allInitiativesSnapshot = await getDocs(
+  collection(db, "initiatives")
+);
+
+let joinedCount = 0;
+
+for (const initiativeDoc of allInitiativesSnapshot.docs) {
+  const participantRef = doc(
+    db,
+    "initiatives",
+    initiativeDoc.id,
+    "participants",
+    currentUser.uid
+  );
+
+  const participantSnapshot = await getDoc(participantRef);
+
+  if (participantSnapshot.exists()) {
+    joinedCount++;
+  }
+}
+
+setJoinedInitiativeCount(joinedCount);
+
+console.log("COMPLETED INITIATIVES:", completedCount);
+console.log("JOINED INITIATIVES:", joinedCount);
+
 }
 
       console.log(
@@ -958,6 +1006,113 @@ const loadMyImpact = async () => {
           </View>
         </View>
 
+        {/* ============== INITIATIVE SUMMARY ============== */}
+<View style={styles.initiativeSummaryCard}>
+  {/* Header */}
+ <View style={styles.initiativeSummaryHeader}>
+  <View style={styles.initiativeSummaryTitleRow}>
+    <Text style={styles.initiativeSummaryIcon}>🌱</Text>
+
+    <View style={styles.initiativeSummaryTitleContainer}>
+      <Text style={styles.initiativeSummaryTitle}>
+        Initiative Summary
+      </Text>
+
+      <Text style={styles.initiativeSummarySubtitle}>
+        Together for a better tomorrow.
+      </Text>
+    </View>
+  </View>
+
+  <TouchableOpacity
+    style={styles.initiativeViewAllButton}
+    onPress={() => navigation.navigate("MyInitiatives")}
+    activeOpacity={0.8}
+  >
+    <Text style={styles.initiativeViewAll}>View All ›</Text>
+  </TouchableOpacity>
+</View>
+
+  {/* Initiative Statistics */}
+  <View style={styles.initiativeStatsRow}>
+    <View style={styles.initiativeStatItem}>
+      <Text style={styles.initiativeStatIcon}>🌿</Text>
+      <Text style={styles.initiativeStatNumber}>
+        {initiativeCount}
+      </Text>
+      <Text style={styles.initiativeStatLabel}>
+        Created
+      </Text>
+    </View>
+
+    <View style={styles.initiativeStatItem}>
+      <Text style={styles.initiativeStatIcon}>🤝</Text>
+      <Text style={styles.initiativeStatNumber}>
+        {joinedInitiativeCount}
+      </Text>
+      <Text style={styles.initiativeStatLabel}>
+        Joined
+      </Text>
+    </View>
+
+    <View style={styles.initiativeStatItem}>
+      <Text style={styles.initiativeStatIcon}>🏆</Text>
+      <Text style={styles.initiativeStatNumber}>
+        {completedInitiativeCount}
+      </Text>
+      <Text style={styles.initiativeStatLabel}>
+        Completed
+      </Text>
+    </View>
+  </View>
+
+  {/* Completion Progress */}
+  <View style={styles.initiativeProgressSection}>
+    <View style={styles.initiativeProgressHeader}>
+      <Text style={styles.initiativeProgressTitle}>
+        Completion Progress
+      </Text>
+
+      <Text style={styles.initiativeProgressPercentage}>
+        {completionProgress}%
+      </Text>
+    </View>
+
+    <View style={styles.initiativeProgressTrack}>
+      <View
+        style={[
+          styles.initiativeProgressFill,
+          { width: `${completionProgress}%` },
+        ]}
+      />
+    </View>
+
+    <Text style={styles.initiativeProgressCaption}>
+      {completedInitiativeCount} of {initiativeCount} initiatives completed
+    </Text>
+  </View>
+
+  {/* Encouragement */}
+  <TouchableOpacity
+    style={styles.initiativeEncouragement}
+    onPress={() => navigation.navigate("CreateInitiative")}
+    activeOpacity={0.85}
+  >
+    <Text style={styles.initiativeEncouragementIcon}>🎯</Text>
+
+    <View style={styles.initiativeEncouragementText}>
+      <Text style={styles.initiativeEncouragementTitle}>
+        Keep Creating Impact
+      </Text>
+      <Text style={styles.initiativeEncouragementSubtitle}>
+        Start new initiatives and inspire others.
+      </Text>
+    </View>
+
+    <Text style={styles.initiativeEncouragementArrow}>›</Text>
+  </TouchableOpacity>
+</View>
+
         {/* ================= MY MOMENTS ================= */}
 
         <View
@@ -1673,4 +1828,186 @@ const styles = StyleSheet.create({
 
     marginLeft: 8,
   },
+    // Initiative Summary
+  initiativeSummaryCard: {
+    backgroundColor: "#F2FAF1",
+    borderRadius: 24,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#DDEEDD",
+    shadowColor: "#1E5631",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+
+initiativeSummaryHeader: {
+  flexDirection: "row",
+  alignItems: "flex-start",
+  marginBottom: 22,
+},
+
+initiativeSummaryTitleRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  flex: 1,
+  minWidth: 0,
+  marginRight: 8,
+},
+
+initiativeViewAll: {
+  color: "#218B4C",
+  fontSize: 14,
+  fontWeight: "800",
+},
+
+initiativeViewAllButton: {
+  flexShrink: 0,
+  paddingVertical: 4,
+  paddingLeft: 4,
+},
+
+  initiativeSummaryIcon: {
+    fontSize: 34,
+    marginRight: 12,
+  },
+
+  initiativeSummaryTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#20352B",
+  },
+
+  initiativeSummarySubtitle: {
+    fontSize: 12,
+    color: "#718078",
+    marginTop: 4,
+  },
+
+  initiativeStatsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 22,
+  },
+
+  initiativeStatItem: {
+    flex: 1,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    marginHorizontal: 3,
+    borderWidth: 1,
+    borderColor: "#E8F0E5",
+  },
+
+  initiativeStatIcon: {
+    fontSize: 23,
+    marginBottom: 7,
+  },
+
+  initiativeStatNumber: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#20352B",
+  },
+
+  initiativeStatLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#718078",
+    marginTop: 5,
+    textAlign: "center",
+  },
+
+  initiativeProgressSection: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 15,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: "#E6EFE4",
+  },
+
+  initiativeProgressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+
+  initiativeProgressTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#20352B",
+  },
+
+  initiativeProgressPercentage: {
+    fontSize: 17,
+    fontWeight: "900",
+    color: "#218B4C",
+  },
+
+  initiativeProgressTrack: {
+    height: 10,
+    backgroundColor: "#E4EAE3",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+
+  initiativeProgressFill: {
+    height: "100%",
+    backgroundColor: "#35A853",
+    borderRadius: 10,
+  },
+
+  initiativeProgressCaption: {
+    fontSize: 12,
+    color: "#718078",
+    marginTop: 9,
+  },
+
+  initiativeEncouragement: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E6F5E5",
+    borderRadius: 16,
+    padding: 13,
+  },
+
+  initiativeEncouragementIcon: {
+    fontSize: 25,
+    marginRight: 12,
+  },
+
+  initiativeEncouragementText: {
+    flex: 1,
+  },
+
+  initiativeEncouragementTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#20352B",
+  },
+
+  initiativeEncouragementSubtitle: {
+    fontSize: 11,
+    color: "#718078",
+    marginTop: 4,
+  },
+
+  initiativeEncouragementArrow: {
+    fontSize: 28,
+    color: "#218B4C",
+    marginLeft: 8,
+  },
+  initiativeSummaryTitleContainer: {
+  flex: 1,
+  flexShrink: 1,
+},
 });

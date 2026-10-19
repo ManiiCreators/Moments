@@ -275,8 +275,11 @@ export default function MyInitiatives({ navigation }) {
               <View style={styles.statusDot} />
 
               <Text style={styles.statusText}>
-                {item.ongoing ? "Ongoing" : "Completed"}
-              </Text>
+            {item.ongoing === false ||
+            item.status?.toLowerCase() === "completed"
+            ? "Completed"
+            : "Ongoing"}            
+             </Text>
 
             </View>
 
