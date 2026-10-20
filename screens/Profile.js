@@ -49,6 +49,9 @@ const [bio, setBio] = useState(
 
   const [impactCount, setImpactCount] = useState(0);
   const [peopleHelpedCount, setPeopleHelpedCount] = useState(0);
+  const [initiativePeopleHelpedCount, setInitiativePeopleHelpedCount] = useState(0);
+
+
   const [initiativeCount, setInitiativeCount] = useState(0);
 
   const [joinedInitiativeCount, setJoinedInitiativeCount] = useState(0);
@@ -215,6 +218,16 @@ if (currentUser) {
   const initiativeSnapshot = await getDocs(initiativeQuery);
 
   setInitiativeCount(initiativeSnapshot.size);
+
+  const initiativePeopleHelpedTotal = initiativeSnapshot.docs.reduce(
+  (total, initiativeDoc) => {
+    const data = initiativeDoc.data();
+    return total + (Number(data.peopleHelped) || 0);
+  },
+  0
+);
+
+setInitiativePeopleHelpedCount(initiativePeopleHelpedTotal);
 
   console.log(
     "MY INITIATIVES:",
@@ -1001,10 +1014,71 @@ const loadMyImpact = async () => {
                 }
               >
                 Initiatives
-              </Text>
-           </TouchableOpacity>
-          </View>
-        </View>
+             </Text>
+</TouchableOpacity>
+
+<TouchableOpacity
+  style={styles.impactStat}
+  activeOpacity={0.7}
+>
+  <View style={styles.peopleCircle}>
+    <Ionicons
+      name="people"
+      size={20}
+      color="#1976B9"
+    />
+  </View>
+
+  <Text style={styles.impactNumber}>
+    {initiativePeopleHelpedCount}
+  </Text>
+
+  <Text style={styles.impactLabel}>
+    Initiative People Helped
+  </Text>
+</TouchableOpacity>
+</View>
+</View>
+
+<TouchableOpacity
+  style={{
+    backgroundColor: "#23845B",
+    paddingVertical: 15,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    marginTop: 16,
+    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  }}
+  activeOpacity={0.85}
+  onPress={() => navigation.navigate("ImpactDashboard")}
+>
+  <Ionicons
+    name="analytics-outline"
+    size={22}
+    color="#FFFFFF"
+  />
+
+  <Text
+    style={{
+      color: "#FFFFFF",
+      fontSize: 15,
+      fontWeight: "800",
+      marginLeft: 10,
+    }}
+  >
+    View Impact Dashboard
+  </Text>
+
+  <Ionicons
+    name="arrow-forward"
+    size={19}
+    color="#FFFFFF"
+    style={{ marginLeft: 8 }}
+  />
+</TouchableOpacity>
 
         {/* ============== INITIATIVE SUMMARY ============== */}
 <View style={styles.initiativeSummaryCard}>

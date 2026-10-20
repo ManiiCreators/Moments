@@ -32,6 +32,7 @@ import MyInitiatives from "./screens/MyInitiatives";
 import JoinedInitiatives from "./screens/JoinedInitiatives";
 import InitiativeDetails from "./screens/InitiativeDetails";
 import MyImpacts from "./screens/MyImpacts";
+import ImpactDashboard from "./screens/ImpactDashboard";
 import PeopleHelped from "./screens/PeopleHelped";
 import EditImpact from "./screens/EditImpact";
 import Followers from "./screens/Followers";
@@ -81,6 +82,7 @@ if (loading) {
       <Stack.Screen name="JoinedInitiatives" component={JoinedInitiatives} />
       <Stack.Screen name="InitiativeDetails" component={InitiativeDetails} />
       <Stack.Screen name="MyImpacts" component={MyImpacts} />
+      <Stack.Screen name="ImpactDashboard" component={ImpactDashboard} />
       <Stack.Screen name="EditImpact" component={EditImpact} />
       <Stack.Screen name="PeopleHelped" component={PeopleHelped} />
       <Stack.Screen name="Followers" component={Followers} />
